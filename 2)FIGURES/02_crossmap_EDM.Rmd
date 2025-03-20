@@ -21,7 +21,10 @@ library(lubridate)
 We are going to attempt to use `ksmooth()` due to it's syntax set up so that the smoothing parameter is explicitly written as a bandwidth in units of the `x` variable. We are going to use a bandwidth of 28 days, so that the quartiles of the kernal fall into ± 7 days.
 
 ```{r cars}
-All.Var <- readRDS("~/Research/Water Quality/HAB-Thesis/All.Var.rds")
+#All.Var <- readRDS("~/Research/Water Quality/HAB-Thesis/All.Var.rds")
+
+All.Var <- readRDS("All.Var.rds")
+
 
 ```
 
@@ -181,15 +184,15 @@ Surrogate_turb <- data.frame(yday=df_turb$yday,turb_surr = make_yday_surrogate(d
 
 ```{r}
 
-Surrogate_phy <- as.data.frame(Surrogate_phy)
-Surrogate_chl <- as.data.frame(Surrogate_chl)
-Surrogate_ph <- as.data.frame(Surrogate_ph)
-Surrogate_Celsius <- as.data.frame(Surrogate_Celsius)
-Surrogate_spcond <- as.data.frame(Surrogate_spcond)
-Surrogate_do <- as.data.frame(Surrogate_do)
-Surrogate_turb <- as.data.frame(Surrogate_turb)
-Surrogate_Salinity <- as.data.frame(Surrogate_Salinity)
-Surrogate_del_phy <- as.data.frame(Surrogate_del_phy)
+#Surrogate_phy <- as.data.frame(Surrogate_phy)
+#Surrogate_chl <- as.data.frame(Surrogate_chl)
+#Surrogate_ph <- as.data.frame(Surrogate_ph)
+#Surrogate_Celsius <- as.data.frame(Surrogate_Celsius)
+#Surrogate_spcond <- as.data.frame(Surrogate_spcond)
+#Surrogate_do <- as.data.frame(Surrogate_do)
+#Surrogate_turb <- as.data.frame(Surrogate_turb)
+#Surrogate_Salinity <- as.data.frame(Surrogate_Salinity)
+# Surrogate_del_phy <- as.data.frame(Surrogate_del_phy)
 
 
 Surrogate <- bind_cols(
@@ -200,14 +203,19 @@ Surrogate <- bind_cols(
   Surrogate_spcond,
   Surrogate_do,
   Surrogate_turb,
-  Surrogate_Salinity,
-  Surrogate_del_phy
+  Surrogate_Salinity
+ # , Surrogate_del_phy
   
 )
 
 
+Surrogate <- Surrogate[, -c(3, 5, 7, 9, 11, 13, 15)]
+
+
+
 # Set the column names
 colnames(Surrogate) <- c(
+  "yday",
   "phy",
   "chl",
   "ph",
@@ -215,9 +223,27 @@ colnames(Surrogate) <- c(
   "spcond",
   "do",
   "turb",
-  "Salinity",
-  "del_phy"
+  "Salinity"
+ # , "del_phy"
 )
+
+
+#Save Surrogate 
+
+
+# Check if the file exists
+if(file.exists("Surrogate")) {
+  # Load the file if it exists
+  Surrogate <- readRDS("Surrogate.rds")
+} else {
+  # If the file does not exist, create Multi_E2_D3
+  Surrogate <- Surrogate
+  # Save Multi_E2_D3 to file
+  saveRDS(Surrogate, "Surrogate.rds")
+}
+
+
+
 ```
 
 
@@ -227,6 +253,9 @@ colnames(Surrogate) <- c(
 ###CCM EPA BUOY
 ```{r}
 ag_df_CR <- na.omit(ag_df_CR)
+
+
+
 ```
 
 ##PH
@@ -238,23 +267,41 @@ ag_df_CR <- na.omit(ag_df_CR)
 
 ag_df_CR <- na.omit(ag_df_CR)
 
+library(rEDM)
+
 #No "Includeddata = TRUE"
 
 #CMAPS
 
 #cmap.ph.del_phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "ph", target = #"del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
 
-cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = 2, tau=-2, Tp = 0, columns = "ph", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
+cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = 2, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE) #start end space in between
 
 cmap.ph.chl <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "ph", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
 
+#tau is 7
+#E of 6 6 EDM back up w/ publication 
+#add exclusion radius 
+exclusionRadius = tau_i, # exclude 2*tau additional points in cross-val
+tau
+
+#real <- lib_sizes = "20 40 60 80 100 140 180 240 300 400 500 600"
+#sample <- 100
+
+
 #Surrogates
 
-Surr.cmap.ph.phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
+Surr.cmap.ph.phy <- CCM(dataFrame = Surrogate, E = 2, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
 
 #Surr.cmap.ph.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "chl", target # = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
 
-Surr.cmap.ph.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "chl", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
+Surr.cmap.ph.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "ph", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
+
+
+#lib_sizes = "1169"
+#sample = "100"
+#random=FALSE
+
 
 #CMAP Correlations 
 
