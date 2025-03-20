@@ -1,0 +1,713 @@
+
+---
+title: "01_univariate_EDM"
+output: html_document
+date: "2024-04-03"
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: 72
+---
+
+
+
+# Library
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(oce)
+library(padr)
+library(rEDM)
+library(ggplot2)
+library(zoo)
+library(quantreg)
+library(dplyr)
+
+```
+
+
+
+#EDM UNIVARIATE
+
+# EDM
+
+## EDM Uni-variate Analysis
+
+## EDM 9-12 PHY
+
+```{r}
+
+#Without NA Values
+
+morndf_CR <- readRDS("morndf_CR.rds")
+
+# Find the first row number for the first date in 2023
+first_row_2023 <- which(format(morndf_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+# Find the last value 
+last_value <- nrow(morndf_CR)
+
+print(last_value)
+
+```
+
+```{r}
+lib_ins <- c(1,1084) # data up through end of 2022; this is the training set
+lib_oos <- c(1085,1258) # leave this alone until we're nearly done with the project
+
+rho_E <- EmbedDimension(dataFrame = morndf_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = morndf_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(color="blue") +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1)
+  
+```
+
+4-days:
+
+```{r}
+tau_i <- 4
+
+# Same as before but using a larger tau and setting Tp = tau
+
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = morndf_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+rho_E_tau_i <- EmbedDimension(dataFrame = morndf_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i,
+                        exclusionRadius = tau_i, # exclude 2*tau additional points in cross-val
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = morndf_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E_tau_i %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(aes(color="correct")) +
+  geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+  
+```
+
+###Predict Nonlinear
+
+```{r}
+rho_theta_tau_i <- PredictNonlinear(dataFrame = morndf_CR, columns = "phy", target = "phy",
+                                    E=3,
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+preds_AR1 <- SMap(dataFrame = morndf_CR, columns = "del_phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR1 <- ComputeError(preds_AR1$predictions$Observations,
+                         preds_AR1$predictions$Predictions)
+
+
+rho_theta_tau_i %>%
+  ggplot(aes(x=Theta,y=rho)) + 
+  geom_line() +
+  # geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  # ylim(0,0.5) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+
+```
+
+## EDM 9-12 1st Diff PHY
+
+```{r}
+
+#Without NA Values
+
+morndf_CR <- na.omit(morndf_CR) 
+
+
+# Find the first row number for the first date in 2023
+first_row_2023 <- which(format(morndf_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+# Find the last value 
+last_value <- nrow(morndf_CR)
+
+print(last_value)
+
+```
+
+```{r}
+
+rho_E <- EmbedDimension(dataFrame = morndf_CR, columns = "del_phy", target = "del_phy",
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = morndf_CR, columns = "del_phy", target = "del_phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(color="blue") +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1)
+  
+
+#rho_E <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+#lib = "1 1075", pred = "1076 1223", showPlot = TRUE) #lib train, #pred is pred 
+
+#lib = "1 100 101 200 301 400", - leaving one out
+
+```
+
+4-days:
+
+```{r}
+tau_i <- 4
+
+# Same as before but using a larger tau and setting Tp = tau
+
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = morndf_CR, columns = "del_phy", target = "del_phy",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+rho_E_tau_i <- EmbedDimension(dataFrame = morndf_CR, columns = "del_phy", target = "del_phy",
+                        tau=-tau_i,Tp=tau_i,
+                        exclusionRadius = tau_i, # exclude 2*tau additional points in cross-val
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = morndf_CR, columns = "del_phy", target = "del_phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E_tau_i %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(aes(color="correct")) +
+  geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+  
+```
+
+###Predict Nonlinear
+
+```{r}
+rho_theta_tau_i <- PredictNonlinear(dataFrame = morndf_CR, columns = "del_phy", target = "del_phy",
+                                    E=8,
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+preds_AR1 <- SMap(dataFrame = morndf_CR, columns = "del_phy", target = "del_phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR1 <- ComputeError(preds_AR1$predictions$Observations,
+                         preds_AR1$predictions$Predictions)
+
+
+rho_theta_tau_i %>%
+  ggplot(aes(x=Theta,y=rho)) + 
+  geom_line() +
+  # geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  # ylim(0,0.5) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+
+```
+
+## EDM 9-12 CHL
+
+```{r}
+
+#Without NA Values
+
+morndf_CR <- na.omit(morndf_CR) 
+
+
+# Find the first row number for the first date in 2023
+first_row_2023 <- which(format(morndf_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+# Find the last value 
+last_value <- nrow(morndf_CR)
+
+print(last_value)
+
+```
+
+```{r}
+
+rho_E <- EmbedDimension(dataFrame = morndf_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = morndf_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, E=1,theta=0) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(color="blue") +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1)
+  
+
+#rho_E <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+#lib = "1 1075", pred = "1076 1223", showPlot = TRUE) #lib train, #pred is pred 
+
+#lib = "1 100 101 200 301 400", - leaving one out
+
+```
+
+4-days:
+
+```{r}
+tau_i <- 4
+
+# Same as before but using a larger tau and setting Tp = tau
+
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = morndf_CR, columns = "chl", target = "chl",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+rho_E_tau_i <- EmbedDimension(dataFrame = morndf_CR, columns = "chl", target = "chl",
+                        tau=-tau_i,Tp=tau_i,
+                        exclusionRadius = tau_i, # exclude 2*tau additional points in cross-val
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = morndf_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E_tau_i %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(aes(color="correct")) +
+  geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+  
+```
+
+###Predict Nonlinear
+
+```{r}
+rho_theta_tau_i <- PredictNonlinear(dataFrame = morndf_CR, columns = "chl", target = "chl",
+                                    E=9,
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+preds_AR1 <- SMap(dataFrame = morndf_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR1 <- ComputeError(preds_AR1$predictions$Observations,
+                         preds_AR1$predictions$Predictions)
+
+
+rho_theta_tau_i %>%
+  ggplot(aes(x=Theta,y=rho)) + 
+  geom_line() +
+  # geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  # ylim(0,0.5) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+
+```
+
+## EDM Daily CHL
+
+```{r}
+
+#Without NA Values
+ag_df_CR <- readRDS("ag_df_CR.rds")
+ag_df_CR <- na.omit(ag_df_CR) 
+
+
+# Find the first row number for the first date in 2023
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+# Find the last value 
+last_value <- nrow(ag_df_CR)
+
+print(last_value)
+
+```
+
+### Optimal Embedding Dimension
+
+-   rho_E
+
+    -   E
+
+    -   Rho
+
+```{r}
+lib_ins <- c(1,1014) # data up through end of 2022; this is the training set
+lib_oos <- c(1025,1189) # leave this alone until we're nearly done with the project
+
+rho_E <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, E=1,theta=0) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(color="blue") +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1)
+  
+
+#rho_E <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+#lib = "1 1075", pred = "1076 1223", showPlot = TRUE) #lib train, #pred is pred 
+
+#lib = "1 100 101 200 301 400", - leaving one out
+
+```
+
+"At a daily time-scale, EDM predictions do not beat the strong
+day-to-day autocorrelation in the signal." This is no surprise. Let's
+look again with a larger tau, informed by the previous ACF analysis; we
+saw a signal somewhere in the window of 4 days - 1 week.
+
+4-days:
+
+```{r}
+tau_i <- 4
+
+# Same as before but using a larger tau and setting Tp = tau
+
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+rho_E_tau_i <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+                        tau=-tau_i,Tp=tau_i,
+                        exclusionRadius = tau_i, # exclude 2*tau additional points in cross-val
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E_tau_i %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(aes(color="correct")) +
+  geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+  
+```
+
+```{r}
+rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+                                    E=5,
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+preds_AR1 <- SMap(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR1 <- ComputeError(preds_AR1$predictions$Observations,
+                         preds_AR1$predictions$Predictions)
+
+
+rho_theta_tau_i %>%
+  ggplot(aes(x=Theta,y=rho)) + 
+  geom_line() +
+  # geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  # ylim(0,0.5) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+
+```
+
+1 week:
+
+```{r}
+tau_i <- 7
+
+# Same as before but using a larger tau and setting Tp = tau
+
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+rho_E_tau_i <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+                        tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E_tau_i %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(aes(color="correct")) +
+  geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+  
+```
+
+```{r}
+
+rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+                                    E=5,
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+preds_AR1 <- SMap(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR1 <- ComputeError(preds_AR1$predictions$Observations,
+                         preds_AR1$predictions$Predictions)
+
+
+rho_theta_tau_i %>%
+  ggplot(aes(x=Theta,y=rho)) + 
+  geom_line() +
+  # geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,0.5) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+
+```
+
+## EDM Daily PHY
+
+```{r}
+
+#Without NA Values
+
+ag_df_CR <- na.omit(ag_df_CR) 
+
+
+# Find the first row number for the first date in 2023
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+# Find the last value 
+last_value <- nrow(ag_df_CR)
+
+print(last_value)
+
+```
+
+### Optimal Embedding Dimension
+
+-   rho_E
+
+    -   E
+
+    -   Rho
+
+```{r}
+
+rho_E <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(color="blue") +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1)
+  
+```
+
+"At a daily time-scale, EDM predictions do not beat the strong
+day-to-day autocorrelation in the signal." This is no surprise. Let's
+look again with a larger tau, informed by the previous ACF analysis; we
+saw a signal somewhere in the window of 4 days - 1 week.
+
+4-days:
+
+```{r}
+tau_i <- 4
+
+# Same as before but using a larger tau and setting Tp = tau
+
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+rho_E_tau_i <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i,
+                        exclusionRadius = tau_i, # exclude 2*tau additional points in cross-val
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E_tau_i %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(aes(color="correct")) +
+  geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+  
+```
+
+**E = 6 here?**
+
+```{r}
+rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                                    E=4,
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+preds_AR1 <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR1 <- ComputeError(preds_AR1$predictions$Observations,
+                         preds_AR1$predictions$Predictions)
+
+
+rho_theta_tau_i %>%
+  ggplot(aes(x=Theta,y=rho)) + 
+  geom_line() +
+  # geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  # ylim(0,0.5) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+
+```
+
+1 week:
+
+```{r}
+tau_i <- 7
+
+# Same as before but using a larger tau and setting Tp = tau
+
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+rho_E_tau_i <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+
+rho_E_tau_i %>%
+  ggplot(aes(x=E,y=rho)) + 
+  geom_line(aes(color="correct")) +
+  geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,1) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+  
+```
+
+```{r}
+
+rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                                    E=2,
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+preds_AR1 <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR1 <- ComputeError(preds_AR1$predictions$Observations,
+                         preds_AR1$predictions$Predictions)
+
+
+rho_theta_tau_i %>%
+  ggplot(aes(x=Theta,y=rho)) + 
+  geom_line() +
+  # geom_line(data=rho_E_tau_i_0,aes(color="wrong")) +
+  geom_hline(aes(yintercept = stats_AR$rho),lty=2,color="black") +
+  ylim(0,0.5) +
+  labs(title=paste0("Simplex with tau = ",tau_i))
+
+```
