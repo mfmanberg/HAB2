@@ -6,8 +6,8 @@ date: "2024-04-03"
 editor_options: 
   chunk_output_type: console
   markdown: 
-    wrap: 72
     
+    wrap: 72
 ---
 
 
@@ -243,8 +243,248 @@ if(file.exists("Surrogate")) {
 }
 
 
+```
+
+
+```{r}
+
+# Assuming df_ph and make_yday_surrogate are already defined
+
+# Generate 100 iterations of the surrogate data
+#surrogate_list <- lapply(1:100, function(i) {
+  #data.frame(iteration = i, yday = df_ph$yday, 
+ #            ph_surr = make_yday_surrogate(df_ph$yday, df_ph$ph))
+#})
+
+# Combine all iterations into a single data frame
+#Surrogate_ph <- do.call(rbind, surrogate_list)
+
+# View the structure of the resulting data frame
+#str(Surrogate_ph)
+
+
+
+Surrogate_ph %>%
+  ggplot(aes(x=yday,y=ph_surr)) + geom_point(pch=1,alpha=.5)
+
+
+# Function to generate surrogate data for a given data frame
+generate_surrogate <- function(df, var_name) {
+  lapply(1:100, function(i) {
+    data.frame(iteration = i, yday = df$yday, 
+               surr_value = make_yday_surrogate(df$yday, df[[var_name]]))
+  }) %>%
+    do.call(rbind, .) %>%
+    setNames(c("iteration", "yday", paste0(var_name, "_surr")))
+}
+
+# Generate surrogate datasets
+Surrogate_ph <- generate_surrogate(df_ph, "ph")
+Surrogate_chl <- generate_surrogate(df_chl, "chl")
+Surrogate_phy <- generate_surrogate(df_phy, "phy")
+Surrogate_Celsius <- generate_surrogate(df_Celsius, "Celsius")
+Surrogate_spcond <- generate_surrogate(df_spcond, "spcond")
+Surrogate_do <- generate_surrogate(df_do, "do")
+Surrogate_Salinity <- generate_surrogate(df_Salinity, "Salinity")
+Surrogate_turb <- generate_surrogate(df_turb, "turb")
+
+# View structure of one of the datasets
+str(Surrogate_ph)
+
+#graphs
+
+Surrogate_ph %>%
+  ggplot(aes(x=yday,y=ph_surr)) + geom_point(pch=1,alpha=.5)
+
+
+Surrogate_chl %>%
+  ggplot(aes(x=yday,y=chl_surr)) + geom_point(pch=1,alpha=.5)
+
+
+Surrogate_phy %>%
+  ggplot(aes(x=yday,y=phy_surr)) + geom_point(pch=1,alpha=.5)
+
+
+Surrogate_Celsius %>%
+  ggplot(aes(x=yday,y=Celsius_surr)) + geom_point(pch=1,alpha=.5)
+
+#average together
+
+
+Surrogate_chl <- Surrogate_chl %>%
+  group_by(yday) %>%
+  summarise(chl_surr = mean(chl_surr, na.rm = TRUE))
+
+Surrogate_ph <- Surrogate_ph %>%
+  group_by(yday) %>%
+  summarise(ph_surr = mean(ph_surr, na.rm = TRUE))
+
+Surrogate_phy <- Surrogate_phy %>%
+  group_by(yday) %>%
+  summarise(phy_surr = mean(phy_surr, na.rm = TRUE))
+
+Surrogate_Celsius <- Surrogate_Celsius %>%
+  group_by(yday) %>%
+  summarise(Celsius_surr = mean(Celsius_surr, na.rm = TRUE))
+
+
+Surrogate_spcond <- Surrogate_spcond %>%
+  group_by(yday) %>%
+  summarise(spcond_surr = mean(spcond_surr, na.rm = TRUE))
+
+
+Surrogate_do <- Surrogate_do %>%
+  group_by(yday) %>%
+  summarise(do_surr = mean(do_surr, na.rm = TRUE))
+
+
+Surrogate_turb <- Surrogate_turb %>%
+  group_by(yday) %>%
+  summarise(turb_surr = mean(turb_surr, na.rm = TRUE))
+
+
+Surrogate_Salinity <- Surrogate_Salinity %>%
+  group_by(yday) %>%
+  summarise(Salinity_surr = mean(Salinity_surr, na.rm = TRUE))
+
+#bind columns
+
+
+Surrogate <- bind_cols(
+  Surrogate_phy,
+  Surrogate_chl,
+  Surrogate_ph,
+  Surrogate_Celsius,
+  Surrogate_spcond,
+  Surrogate_do,
+  Surrogate_turb,
+  Surrogate_Salinity
+ # , Surrogate_del_phy
+  
+)
+
+
+#Surrogate <- Surrogate[, -c(1, 3,5)]
+                            
+                            
+                            
+Surrogate <- Surrogate[, -c( 3, 5, 7,9, 11, 13, 15)]
+
+
+
+# Set the column names
+colnames(Surrogate) <- c(
+  "yday",
+  "phy",
+  "chl",
+  "ph",
+  "Celsius",
+  "spcond",
+  "do",
+  "turb",
+  "Salinity"
+ # , "del_phy"
+)
+
+
+
 
 ```
+
+
+
+
+
+
+
+
+#CMAP FUNCTION
+
+
+```{r}
+
+tau_i <- 6
+
+
+
+
+#(1) Run CONVERGENT cross-map for the real time series. Here sample = 100, random = FALSE, and you give a vector of library sizes.
+
+
+cmap.ph.phy.1 <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) #libsize - start 
+end space in between
+
+
+#(2) Run cross-map just at the maximum library size for the "real" time series. Now sample = "1", lib_sizes = "1169", and random = FALSE.
+
+
+cmap.ph.phy.2 <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "1169", sample = 1, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) #libsize - start end space in between
+
+
+
+
+#(3) Run cross-map just at the maximum library size for each of the 200 SURROGATE time series. Sample = "1", lib_sizes = "1169", random  = FALSE.
+
+
+
+cmap.ph.phy.3 <- CCM(dataFrame = Surrogate, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "1169", sample = 1, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) #libsize - start end space in between
+
+
+
+
+
+#tau is 7
+#E of 6 6 EDM back up w/ publication 
+#add exclusion radius 
+exclusionRadius = tau_i, # exclude 2*tau additional points in cross-val
+tau
+
+#real <- lib_sizes = "20 40 60 80 100 140 180 240 300 400 500 600"
+#sample <- 100
+
+
+
+#lib_sizes = "1169"
+#sample = "100"
+#random=FALSE
+
+
+
+
+
+
+
+
+```
+
+```{r}
+do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, sample, exclusionRadius, random = FALSE, showPlot = FALSE) {
+  
+  # Run CCM
+  ccm_result <- CCM(
+    dataFrame = dataFrame,
+    E = E,
+    tau = tau,
+    Tp = Tp,
+    columns = columns,
+    target = target,
+    libSizes = libSizes,
+    sample = sample,
+    exclusionRadius = exclusionRadius,
+    random = random,
+    showPlot = showPlot
+  )
+  
+  # Extract rho at maximum library size
+  max_lib_size <- max(as.numeric(unlist(strsplit(libSizes, " "))))
+  rho_max <- ccm_result %>%
+    filter(LibrarySize == max_lib_size) %>%
+    pull(rho)
+  
+  return(rho_max)
+}
+```
+
 
 
 

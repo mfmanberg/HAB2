@@ -1,0 +1,511 @@
+---
+title: "02.5_Surrogate"
+output: html_document
+date: "2025-03-27"
+---
+
+
+## Propose function
+
+```{r}
+
+
+make_yday_surrogate <- function(yday,ts,bw=28,num_surr=1){
+  
+  # ksmooth(df_ph$yday,df_ph$ph,bandwidth=28,x.points=120:320,kernel="normal") 
+  
+  if (any(!is.finite(ts))) {
+    stop("SurrogateData(): input time series contained invalid values")
+  }
+  n = length(ts)
+  
+  seasonal_cyc = map_dbl(yday,\(yday_i) ksmooth(yday,ts,bandwidth=bw,x.points=yday_i)$y)
+  seasonal_resid = ts - seasonal_cyc
+  
+  # randomize the temporal sequence of residuals and add them back to the cycle.
+  
+  return(sapply(1:num_surr, function(i) {
+    seasonal_cyc + sample(seasonal_resid, n)
+  }))
+  
+  
+}
+
+
+```
+
+## Examine columns from various data streams
+
+Let's look at turbidity in the Charles River as an example.
+
+```{r pressure, echo=FALSE}
+
+
+df_ph <- All.Var %>%
+  select(DATE,ph) %>%
+  mutate(yday = yday(DATE)) %>%
+  filter(complete.cases(.))
+
+df_chl <- All.Var %>%
+  select(DATE,chl) %>%
+  mutate(yday = yday(DATE)) %>%
+  filter(complete.cases(.))
+  
+  
+df_phy  <- All.Var %>%
+  select(DATE,phy) %>%
+  mutate(yday = yday(DATE)) %>%
+  filter(complete.cases(.))
+
+
+df_Celsius  <- All.Var %>%
+  select(DATE,Celsius) %>%
+  mutate(yday = yday(DATE)) %>%
+  filter(complete.cases(.))
+
+
+df_spcond  <- All.Var %>%
+  select(DATE,spcond) %>%
+  mutate(yday = yday(DATE)) %>%
+  filter(complete.cases(.))
+
+
+df_do  <- All.Var %>%
+  select(DATE,do) %>%
+  mutate(yday = yday(DATE)) %>%
+  filter(complete.cases(.))
+
+
+df_Salinity  <- All.Var %>%
+  select(DATE,Salinity) %>%
+  mutate(yday = yday(DATE)) %>%
+  filter(complete.cases(.))
+
+
+df_turb  <- All.Var %>%
+  select(DATE,turb) %>%
+  mutate(yday = yday(DATE)) %>%
+  filter(complete.cases(.))
+
+
+```
+
+```{r}
+df_ph %>%
+  ggplot(aes(x=yday,y=ph)) + geom_point(pch=1,alpha=.5)
+
+
+df_chl %>%
+  ggplot(aes(x=yday,y=chl)) + geom_point(pch=1,alpha=.5)
+
+
+df_Celsius %>%
+  ggplot(aes(x=yday,y=Celsius)) + geom_point(pch=1,alpha=.5)
+
+df_spcond %>%
+  ggplot(aes(x=yday,y=spcond)) + geom_point(pch=1,alpha=.5)
+
+df_do %>%
+  ggplot(aes(x=yday,y=do)) + geom_point(pch=1,alpha=.5)
+
+df_Salinity %>%
+  ggplot(aes(x=yday,y=Salinity)) + geom_point(pch=1,alpha=.5)
+
+df_turb %>%
+  ggplot(aes(x=yday,y=turb)) + geom_point(pch=1,alpha=.5)
+
+
+```
+
+```{r}
+f_kreg_ph <- ksmooth(df_ph$yday,df_ph$ph,bandwidth=28,x.points=120:320,kernel="normal") 
+
+f_kreg_chl <- ksmooth(df_chl$yday,df_chl$chl,bandwidth=28,x.points=120:320,kernel="normal") 
+
+f_kreg_Celsius <- ksmooth(df_Celsius$yday,df_Celsius$Celsius,bandwidth=28,x.points=120:320,kernel="normal") 
+
+f_kreg_spcond <- ksmooth(df_spcond$yday,df_spcond$spcond,bandwidth=28,x.points=120:320,kernel="normal") 
+
+f_kreg_do <- ksmooth(df_do$yday,df_do$do,bandwidth=28,x.points=120:320,kernel="normal") 
+
+f_kreg_Salinity <- ksmooth(df_Salinity$yday,df_Salinity$Salinity,bandwidth=28,x.points=120:320,kernel="normal") 
+
+f_kreg_turb <- ksmooth(df_turb$yday,df_turb$turb,bandwidth=28,x.points=120:320,kernel="normal") 
+
+
+```
+
+```{r}
+Surrogate_ph <- data.frame(yday=df_ph$yday,ph_surr = make_yday_surrogate(df_ph$yday,df_ph$ph))
+
+Surrogate_chl <- data.frame(yday=df_chl$yday,chl_surr = make_yday_surrogate(df_chl$yday,df_chl$chl))
+
+
+Surrogate_phy <- data.frame(yday=df_phy$yday,phy_surr = make_yday_surrogate(df_phy$yday,df_phy$phy))
+
+
+Surrogate_Celsius <- data.frame(yday=df_Celsius$yday,Celsius_surr = make_yday_surrogate(df_Celsius$yday,df_Celsius$Celsius))
+
+Surrogate_spcond <- data.frame(yday=df_spcond$yday,spcond_surr = make_yday_surrogate(df_spcond$yday,df_spcond$spcond))
+
+Surrogate_do <- data.frame(yday=df_do$yday,do_surr = make_yday_surrogate(df_do$yday,df_do$do))
+
+Surrogate_Salinity <- data.frame(yday=df_Salinity$yday,Salinity_surr = make_yday_surrogate(df_Salinity$yday,df_Salinity$Salinity))
+
+Surrogate_turb <- data.frame(yday=df_turb$yday,turb_surr = make_yday_surrogate(df_turb$yday,df_turb$turb))
+
+
+```
+
+```{r}
+
+#Surrogate_phy <- as.data.frame(Surrogate_phy)
+#Surrogate_chl <- as.data.frame(Surrogate_chl)
+#Surrogate_ph <- as.data.frame(Surrogate_ph)
+#Surrogate_Celsius <- as.data.frame(Surrogate_Celsius)
+#Surrogate_spcond <- as.data.frame(Surrogate_spcond)
+#Surrogate_do <- as.data.frame(Surrogate_do)
+#Surrogate_turb <- as.data.frame(Surrogate_turb)
+#Surrogate_Salinity <- as.data.frame(Surrogate_Salinity)
+# Surrogate_del_phy <- as.data.frame(Surrogate_del_phy)
+
+
+Surrogate <- bind_cols(
+  Surrogate_phy,
+  Surrogate_chl,
+  Surrogate_ph,
+  Surrogate_Celsius,
+  Surrogate_spcond,
+  Surrogate_do,
+  Surrogate_turb,
+  Surrogate_Salinity
+ # , Surrogate_del_phy
+  
+)
+
+
+Surrogate <- Surrogate[, -c(3, 5, 7, 9, 11, 13, 15)]
+
+
+
+# Set the column names
+colnames(Surrogate) <- c(
+  "yday",
+  "phy",
+  "chl",
+  "ph",
+  "Celsius",
+  "spcond",
+  "do",
+  "turb",
+  "Salinity"
+ # , "del_phy"
+)
+
+
+#Save Surrogate 
+
+
+# Check if the file exists
+if(file.exists("Surrogate")) {
+  # Load the file if it exists
+  Surrogate <- readRDS("Surrogate.rds")
+} else {
+  # If the file does not exist, create Multi_E2_D3
+  Surrogate <- Surrogate
+  # Save Multi_E2_D3 to file
+  saveRDS(Surrogate, "Surrogate.rds")
+}
+
+
+```
+Generate 100 surrogates averaged
+
+```{r}
+
+# Function to generate surrogate data for a given data frame
+generate_surrogate <- function(df, var_name) {
+  lapply(1:100, function(i) {
+    data.frame(iteration = i, yday = df$yday, 
+               surr_value = make_yday_surrogate(df$yday, df[[var_name]]))
+  }) %>%
+    do.call(rbind, .) %>%
+    setNames(c("iteration", "yday", paste0(var_name, "_surr")))
+}
+
+# Generate surrogate datasets
+Surrogate100_ph <- generate_surrogate(df_ph, "ph")
+Surrogate100_chl <- generate_surrogate(df_chl, "chl")
+Surrogate100_phy <- generate_surrogate(df_phy, "phy")
+Surrogate100_Celsius <- generate_surrogate(df_Celsius, "Celsius")
+Surrogate100_spcond <- generate_surrogate(df_spcond, "spcond")
+Surrogate100_do <- generate_surrogate(df_do, "do")
+Surrogate100_Salinity <- generate_surrogate(df_Salinity, "Salinity")
+Surrogate100_turb <- generate_surrogate(df_turb, "turb")
+
+# View structure of one of the datasets
+str(Surrogate_ph)
+
+#graphs
+
+Surrogate100_ph %>%
+  ggplot(aes(x=yday,y=ph_surr)) + geom_point(pch=1,alpha=.5)
+
+Surrogate100_chl %>%
+  ggplot(aes(x=yday,y=chl_surr)) + geom_point(pch=1,alpha=.5)
+
+Surrogate100_phy %>%
+  ggplot(aes(x=yday,y=phy_surr)) + geom_point(pch=1,alpha=.5)
+
+Surrogate100_Celsius %>%
+  ggplot(aes(x=yday,y=Celsius_surr)) + geom_point(pch=1,alpha=.5)
+
+#average together?
+
+
+Surrogate100_chl <- Surrogate100_chl %>%
+  group_by(yday) %>%
+  summarise(chl_surr = mean(chl_surr, na.rm = TRUE))
+
+Surrogate100_ph <- Surrogate100_ph %>%
+  group_by(yday) %>%
+  summarise(ph_surr = mean(ph_surr, na.rm = TRUE))
+
+Surrogate100_phy <- Surrogate100_phy %>%
+  group_by(yday) %>%
+  summarise(phy_surr = mean(phy_surr, na.rm = TRUE))
+
+Surrogate100_Celsius <- Surrogate100_Celsius %>%
+  group_by(yday) %>%
+  summarise(Celsius_surr = mean(Celsius_surr, na.rm = TRUE))
+
+
+Surrogate100_spcond <- Surrogate100_spcond %>%
+  group_by(yday) %>%
+  summarise(spcond_surr = mean(spcond_surr, na.rm = TRUE))
+
+
+Surrogate100_do <- Surrogate100_do %>%
+  group_by(yday) %>%
+  summarise(do_surr = mean(do_surr, na.rm = TRUE))
+
+
+Surrogate100_turb <- Surrogate100_turb %>%
+  group_by(yday) %>%
+  summarise(turb_surr = mean(turb_surr, na.rm = TRUE))
+
+
+Surrogate100_Salinity <- Surrogate100_Salinity %>%
+  group_by(yday) %>%
+  summarise(Salinity_surr = mean(Salinity_surr, na.rm = TRUE))
+
+#bind columns
+
+
+Surrogate100 <- bind_cols(
+  Surrogate100_phy,
+  Surrogate100_chl,
+  Surrogate100_ph,
+  Surrogate100_Celsius,
+  Surrogate100_spcond,
+  Surrogate100_do,
+  Surrogate100_turb,
+  Surrogate100_Salinity
+ # , Surrogate_del_phy
+  
+)
+
+
+#Surrogate <- Surrogate[, -c(1, 3,5)]
+                            
+                            
+                            
+Surrogate100 <- Surrogate100[, -c( 3, 5, 7,9, 11, 13, 15)]
+
+
+
+# Set the column names
+avg_Surrogate100 <- colnames(Surrogate100) <- c(
+  "yday",
+  "phy",
+  "chl",
+  "ph",
+  "Celsius",
+  "spcond",
+  "do",
+  "turb",
+  "Salinity"
+ # , "del_phy"
+)
+
+
+# Check if the file exists
+if(file.exists("avg_Surrogate100")) {
+  # Load the file if it exists
+  Surrogate <- readRDS("avg_Surrogate100.rds")
+} else {
+  # If the file does not exist, create Multi_E2_D3
+  Surrogate100 <- Surrogate100
+  # Save Multi_E2_D3 to file
+  saveRDS(avg_Surrogate100, "avg_Surrogate100.rds")
+}
+
+```
+
+Generate 100 surrogates unaveraged
+
+```{r}
+
+# Function to generate surrogate data for a given data frame
+generate_surrogate <- function(df, var_name) {
+  lapply(1:100, function(i) {
+    data.frame(iteration = i, yday = df$yday, 
+               surr_value = make_yday_surrogate(df$yday, df[[var_name]]))
+  }) %>%
+    do.call(rbind, .) %>%
+    setNames(c("iteration", "yday", paste0(var_name, "_surr")))
+}
+
+# Generate surrogate datasets
+Surrogate100_ph <- generate_surrogate(df_ph, "ph")
+Surrogate100_chl <- generate_surrogate(df_chl, "chl")
+Surrogate100_phy <- generate_surrogate(df_phy, "phy")
+Surrogate100_Celsius <- generate_surrogate(df_Celsius, "Celsius")
+Surrogate100_spcond <- generate_surrogate(df_spcond, "spcond")
+Surrogate100_do <- generate_surrogate(df_do, "do")
+Surrogate100_Salinity <- generate_surrogate(df_Salinity, "Salinity")
+Surrogate100_turb <- generate_surrogate(df_turb, "turb")
+
+# View structure of one of the datasets
+str(Surrogate_ph)
+
+#graphs
+
+Surrogate100_ph %>%
+  ggplot(aes(x=yday,y=ph_surr)) + geom_point(pch=1,alpha=.5)
+
+Surrogate100_chl %>%
+  ggplot(aes(x=yday,y=chl_surr)) + geom_point(pch=1,alpha=.5)
+
+Surrogate100_phy %>%
+  ggplot(aes(x=yday,y=phy_surr)) + geom_point(pch=1,alpha=.5)
+
+Surrogate100_Celsius %>%
+  ggplot(aes(x=yday,y=Celsius_surr)) + geom_point(pch=1,alpha=.5)
+
+#bind columns
+
+
+Surrogate100 <- bind_cols(
+  Surrogate100_phy,
+  Surrogate100_chl,
+  Surrogate100_ph,
+  Surrogate100_Celsius,
+  Surrogate100_spcond,
+  Surrogate100_do,
+  Surrogate100_turb,
+  Surrogate100_Salinity
+ # , Surrogate_del_phy
+  
+)
+                            
+                            
+Surrogate100 <- Surrogate100[, -c(1,4,5,7,8,10,11,13,14,16,17,19,20,22,23)]
+
+
+
+# Set the column names
+colnames(Surrogate100) <- c(
+  "yday",
+  "phy",
+  "chl",
+  "ph",
+  "Celsius",
+  "spcond",
+  "do",
+  "turb",
+  "Salinity"
+ # , "del_phy"
+)
+
+
+# Check if the file exists
+if(file.exists("Surrogate100")) {
+  # Load the file if it exists
+  Surrogate <- readRDS("Surrogate100.rds")
+} else {
+  # If the file does not exist, create Multi_E2_D3
+  Surrogate100 <- Surrogate100
+  # Save Multi_E2_D3 to file
+  saveRDS(Surrogate100, "Surrogate100.rds")
+}
+
+```
+
+
+#CMAP FUNCTION
+
+
+```{r}
+
+tau_i <- 6
+
+
+#(1) Run CONVERGENT cross-map for the real time series. Here sample = 100, random = FALSE, and you give a vector of library sizes.
+
+
+cmap.ph.phy.1 <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1189", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) #libsize - start  end space in between
+
+
+#1.1 Return Rho
+
+max_row <- cmap.ph.phy.1[which.max(cmap.ph.phy.1[,1]), 1:3] #save rho of max libsize value 
+result_vector <- as.vector(max_row) #store as vector
+
+
+#1.2 Repeat with all surrogates 
+
+
+
+
+
+#(2) Run cross-map just at the maximum library size for the "real" time series. Now sample = "1", lib_sizes = "1169", and random = FALSE.
+
+
+cmap.ph.phy.2 <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "1189", sample = 1, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) #libsize - start end space in between
+
+
+
+
+#(3) Run cross-map just at the maximum library size for each of the 200 SURROGATE time series. Sample = "1", lib_sizes = "1169", random  = FALSE.
+
+
+
+cmap.ph.phy.3 <- CCM(dataFrame = Surrogate100, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "118900", sample = 1, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) #libsize - start end space in between
+
+
+
+#tau is 7
+#E of 6 6 EDM back up w/ publication 
+#add exclusion radius 
+exclusionRadius = tau_i, # exclude 2*tau additional points in cross-val
+tau
+
+#real <- lib_sizes = "20 40 60 80 100 140 180 240 300 400 500 600"
+#sample <- 100
+
+
+
+#lib_sizes = "1169"
+#sample = "100"
+#random=FALSE
+
+
+
+
+
+
+
+
+```
+
