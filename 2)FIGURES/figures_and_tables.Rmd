@@ -82,7 +82,7 @@ for (var in vars) {
 ```{r}
 # Create an empty data frame to store the results
 results_df <- data.frame(variable = character(), response = character(), 
-                          correlation = numeric(), r_squared = numeric(), p_value = numeric(),
+                          correlation = numeric(), r_squared = numeric(), p_value = numeric(), critical_correlation = numeric(),
                           stringsAsFactors = FALSE)
 
 # Iterate over each variable
@@ -96,7 +96,7 @@ for (var in vars) {
   # Fit the linear model for 'phy'
   lm_phy <- lm(formula_phy, data = ag_df_CR)
   
-  # Extract the correlation coefficient, R-squared value, and p-value
+  # Extract correlation coefficient, R-squared value, p-value
   cor_chl <- cor(ag_df_CR[[var]], ag_df_CR$chl)
   cor_phy <- cor(ag_df_CR[[var]], ag_df_CR$phy)
   r_squared_chl <- summary(lm_chl)$r.squared
@@ -104,18 +104,64 @@ for (var in vars) {
   p_value_chl <- summary(lm_chl)$coefficients[2, 4]
   p_value_phy <- summary(lm_phy)$coefficients[2, 4]
   
+  #critical corr sample size
+  
+  critical_r_chl <- critical.r(length(ag_df_CR$chl))
+  critical_r_phy <- critical.r(length(ag_df_CR$phy))
+  
+  
   # Add the results to the data frame
   results_df <- rbind(results_df, 
-                      data.frame(variable = var, response = "chl",
+                      data.frame(variable = var, response = "chl",  
                                  correlation = cor_chl, r_squared = r_squared_chl, p_value = p_value_chl),
                       data.frame(variable = var, response = "phy",
                                  correlation = cor_phy, r_squared = r_squared_phy, p_value = p_value_phy))
 }
 
+results_df$Significance <- ifelse(
+  (results_df$response == "chl" & abs(results_df$correlation) >=   critical_r_chl) |
+  (results_df$response == "phy" & abs(results_df$correlation) >=  critical_r_phy),
+  "Significant",
+  "Not Significant"
+)
+
+
 # Print the results
 print(results_df)
 
+
+
+
 ```
+
+#Export 
+```{r}
+
+
+# Install necessary packages if not already installed
+if (!requireNamespace("gridExtra", quietly = TRUE)) install.packages("gridExtra")
+if (!requireNamespace("grid", quietly = TRUE)) install.packages("grid")
+
+# Load required libraries
+library(gridExtra)
+library(grid)
+
+# Define output file path
+output_file <- "results_df.png"
+
+# Open PNG graphics device
+png(output_file, width = 1200, height = 600, res = 150)  # Adjust size & resolution
+
+# Create table and plot
+grid.newpage()
+grid.table(results_df)
+
+# Close the graphics device
+dev.off()
+
+
+```
+
 
 #TABLE All.Logan
 
