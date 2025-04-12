@@ -422,6 +422,15 @@ head(df_example)
 df_example <- df_example %>% mutate(sin_season = sin(2*pi*yday/365))
 df_example %>% ggplot(aes(x=Date,y=sin_season)) + geom_line()
 
+
+
+```
+
+
+# CYCLE
+
+```{r}
+
 cycle <- df_example
 
 if (file.exists("cycle.rds")) {
@@ -445,9 +454,8 @@ if (file.exists("ag_df_CR.rds")) {
 
 
 
-
-
 ```
+
 
 # 9-12 Values
 
