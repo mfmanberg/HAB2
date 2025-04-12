@@ -1,0 +1,291 @@
+---
+title: "EPABuoyCharles"
+output: html_document
+date: "2023-10-18"
+---
+
+
+```{r}
+#Load the required library 
+library(rEDM)
+library(tidyverse)
+library(googlesheets4)
+library(tidyverse)
+library(padr)
+library(zoo)
+```
+```
+#Charles River
+```{r}
+#Reads data into R
+CR2023 <- read_sheet('https://docs.google.com/spreadsheets/d/1R_HdqGuVMlfRyVPCzOw3CvbOjXDQfzFtDCMvKdj5vXU/edit?usp=sharing')
+
+CR2022 <- read_sheet('https://docs.google.com/spreadsheets/d/1equdXHt4d-2s3r8YSsuHfpLufeRmGqno-SJqhcEwuNY/edit?usp=sharing')
+
+CR2021 <- read_sheet('https://docs.google.com/spreadsheets/d/1CBzAD9uot_SPkY-JV-lJB6FSxSjlgXIS8A4jSY9SJjE/edit?usp=sharing')
+
+CR2020 <- read_sheet('https://docs.google.com/spreadsheets/d/1fOV7JfJwLxddCaTsR0vkUodOZup4Y6HwVthMLzexe-I/edit?usp=sharing')
+
+CR2019 <- read_sheet('https://docs.google.com/spreadsheets/d/1WGTUQ7F8wadO4RJ6PsfRsEnvwqNMdnAsdX71xqI9L-4/edit?usp=sharing')
+
+CR2018 <- read_sheet('https://docs.google.com/spreadsheets/d/17AX8HNLXUCYz6YJIHRnb_rrKuzDudyAEq5WEhbSxOFQ/edit?usp=sharing')
+
+CR2017 <- read_sheet('https://docs.google.com/spreadsheets/d/18xDJ9cLaZuj3JqhFsf847nSLMGKjfvWZmHWifsrPBq8/edit?usp=sharing')
+
+CR2016 <- read_sheet('https://docs.google.com/spreadsheets/d/1rEOGM2H9cgVbFgVkIQZjIyzzl03fIywtkxBNg7GmXrY/edit?usp=sharing')
+
+CR2015 <- read_sheet('https://docs.google.com/spreadsheets/d/11I8RQnOgZ9xmVEpaTVM_ELQZdTTp6T_305nwxkNI92I/edit?usp=sharing')
+
+#Prints the data
+
+```
+
+```{r}
+#bind rows
+df_CR <- bind_rows(
+  CR2015,
+  CR2016,
+  CR2017 %>% rename(`time est`=time),
+  CR2018,
+  CR2019,
+  CR2020,
+  CR2021,
+  CR2022,
+  CR2023
+)
+#combine data
+df_CR <- df_CR %>%
+  mutate(hour = pmin(hour(`time est`),hour(`time edt`),na.rm=T),
+         minute = pmin(minute(`time est`),minute(`time edt`),na.rm=T)) %>%
+  select(date,hour,minute,chl=`chlorophyll (rfu)`,phy=`phycocyanin (rfu)`, ph=`ph`, Celsius =`temp c`,  spcond = `spcond (ms/cm)`, do = `do (mg/l)`,turb = `turbidity (fnu)` )
+  
+```
+
+#add rows w/ missing NA values 
+```{r}
+
+df_CR <- df_CR %>% pad()
+
+```
+
+
+#time-series+ggplot - chl + phy
+```{r}
+df_CR %>% group_by(date,hour) %>%
+  filter(year(date) >= 2021) %>%
+  summarise(across(c("chl","phy"),mean),.groups="keep") %>%
+  mutate(date= date+hours(hour)) %>%
+  ggplot(aes(x=date)) + 
+  geom_path(aes(y=chl,color="chl")) + 
+  geom_path(aes(y=phy,color="phy")) 
+```
+
+```{r}
+df_CR %>% group_by(date,hour) %>%
+  filter(year(date) >= 2021) %>%
+  summarise(across(c("chl","phy", "ph", "Celsius", "spcond", "do", "turb"),mean),.groups="keep") %>%
+  mutate(date= date+hours(hour)) %>%
+  ggplot(aes(x=date)) + 
+  geom_path(aes(y=chl,color="chl")) + 
+  geom_path(aes(y=phy,color="phy")) +
+  geom_path(aes(y=ph,color="ph")) + 
+  geom_path(aes(y=Celsius,color="Celsius")) +
+  geom_path(aes(y=spcond,color="spcond")) +
+  geom_path(aes(y=do,color="do")) +
+  geom_path(aes(y=turb,color="turb"))
+```
+
+
+
+
+```{r}
+#put back NA values
+df_CR <- na.omit(df_CR) 
+
+#Run ACF CHL, PHY 2021
+ts_chl_2021 <- df_CR %>% 
+  filter(year(date) == 2021) %>%
+  group_by(date,hour) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(chl)
+
+ts_phy_2021 <- df_CR %>% 
+  filter(year(date) == 2021) %>%
+  group_by(date,hour) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(phy)
+
+
+length(ts_chl_2021)
+acf(ts_chl_2021,lag.max = 24*30)
+abline(h = c(0.3,0.6) , col = c("red","red"))
+#determine lag -talk to deyle?
+acf(ts_phy_2021,lag.max = 24*30)
+abline(h = c(0.3,0.6) , col = c("red","red"))
+
+
+```
+
+```{r}
+#Run ACF CHL, PHY ALL
+ts_chl_all <- df_CR %>% 
+  group_by(date,hour) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(chl)
+
+ts_phy_all <- df_CR %>% 
+  group_by(date,hour) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(phy)
+  
+length(ts_chl_all)
+acf(ts_chl_all,lag.max = 24*30)
+abline(h = c(0.3,0.6) , col = c("red","red"))
+acf(ts_phy_all,lag.max = 24*30)
+abline(h = c(0.3,0.6) , col = c("red","red"))
+
+```
+
+
+```{r}
+#**return ACF value - deyle** 
+length(ts_chl_2021)
+acfchl2021 <- acf(ts_chl_2021,lag.max = 24*30)
+acfchl2021
+abline(h = c(0.3,0.6) , col = c("red","red"))
+#determine lag
+Autocorrelation_y<-acf(ts_chl_2021,lag.max = 24*30,plot=FALSE)
+Autocorrelation_y
+acf_string <- toString(Autocorrelation_y)
+acf_string
+acf_string2 <- dim(acf_string)
+```
+
+
+```{r}
+ts_chl_2021 <- df_CR %>% 
+  filter(year(date) == 2021) %>%
+  group_by(date) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(chl)
+
+ts_phy_2021 <- df_CR %>% 
+  filter(year(date) == 2021) %>%
+  group_by(date) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(phy)
+
+
+length(ts_chl_2021)
+acf(ts_chl_2021,lag.max = 30)
+acf(ts_phy_2021,lag.max = 30)
+
+## you can check an individual value as follows
+cor(ts_phy_2021,lag(ts_phy_2021,1),use="pairwise")
+
+```
+
+
+#Mystic
+```{r}
+
+#Reads data into R
+MR2023 <- read_sheet('https://docs.google.com/spreadsheets/d/1R_HdqGuVMlfRyVPCzOw3CvbOjXDQfzFtDCMvKdj5vXU/edit?usp=sharing')
+
+MR2022 <- read_sheet('https://docs.google.com/spreadsheets/d/1equdXHt4d-2s3r8YSsuHfpLufeRmGqno-SJqhcEwuNY/edit?usp=sharing')
+
+MR2021 <- read_sheet('https://docs.google.com/spreadsheets/d/1Plw_zpnRmz6vs3ZyhHr88M1PX3GAQMvBnVv6cKgM5hk/edit?usp=sharing')
+
+#MR2020 does not exist
+
+MR2019 <- read_sheet('https://docs.google.com/spreadsheets/d/1rVk7lLEXyA7nOzjmszhe1cjYGeGkG_pgfDdC_XsDojs/edit?usp=sharing')
+
+MR2018 <- read_sheet('https://docs.google.com/spreadsheets/d/14mxyMMuZvD38kcb-4Xk9APvnY-1z95czcckXm_Dyg_w/edit?usp=sharing')
+
+MR2017 <- read_sheet('https://docs.google.com/spreadsheets/d/1fDgZrK7rcXdpvcCyZZWT0TrpIFcDwJ1ZE5v2yHYJo7U/edit?usp=sharing')
+
+MR2016 <- read_sheet('https://docs.google.com/spreadsheets/d/17eNCkZNgf6aouqLVN8TEPodX4OGDFitxjBb8rapQiJ8/edit?usp=sharing')
+
+MR2015 <- read_sheet('https://docs.google.com/spreadsheets/d/1JA_MWcbTwdW2oVO9ee1TrbhbYx03wN8MXgFZRMvyyWw/edit?usp=sharing')
+
+#Prints the data
+
+```
+```{r}
+df_MR <- bind_rows(
+  MR2015,
+  MR2016,
+  MR2017 %>% rename(`time est`=time),
+  MR2018,
+  MR2019,
+  MR2021,
+  MR2022,
+  MR2023
+)
+
+df_MR <- df_MR %>%
+  mutate(hour = pmin(hour(`time est`),hour(`time edt`),na.rm=T),
+         minute = pmin(minute(`time est`),minute(`time edt`),na.rm=T)) %>%
+  select(date,hour,minute,chl=`chlorophyll (rfu)`,phy=`phycocyanin (rfu)`)
+
+```
+
+
+```
+```{r}
+df_MR %>% group_by(date,hour) %>%
+  filter(year(date) >= 2021) %>%
+  summarise(across(c("chl","phy"),mean),.groups="keep") %>%
+  mutate(date= date+hours(hour)) %>%
+  ggplot(aes(x=date)) + 
+  geom_path(aes(y=chl,color="chl")) + 
+  geom_path(aes(y=phy,color="phy"))
+```
+
+
+```{r}
+ts_chl_2021 <- df_MR %>% 
+  filter(year(date) == 2021) %>%
+  group_by(date,hour) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(chl)
+
+ts_phy_2021 <- df_MR %>% 
+  filter(year(date) == 2021) %>%
+  group_by(date,hour) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(phy)
+
+
+length(ts_chl_2021)
+acf(ts_chl_2021,lag.max = 24*30)
+acf(ts_phy_2021,lag.max = 24*30)
+```
+
+
+```{r}
+ts_chl_2021 <- df_MR %>% 
+  filter(year(date) == 2021) %>%
+  group_by(date) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(chl)
+
+ts_phy_2021 <- df_MR %>% 
+  filter(year(date) == 2021) %>%
+  group_by(date) %>%
+  summarise(across(c("chl","phy"),mean),.groups = "keep") %>%
+  pull(phy)
+
+
+length(ts_chl_2021)
+acf(ts_chl_2021,lag.max = 30)
+acf(ts_phy_2021,lag.max = 30)
+
+## you can check an individual value as follows
+cor(ts_phy_2021,lag(ts_phy_2021,6),use="pairwise")
+
+
+```
+
+
+
