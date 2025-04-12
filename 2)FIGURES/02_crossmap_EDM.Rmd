@@ -1,0 +1,2295 @@
+
+---
+title: "02_crossmap_EDM"
+output: html_document
+date: "2024-04-03"
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    
+    wrap: 72
+---
+
+#Surr functions
+
+
+```{r}
+do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, sample, exclusionRadius, random = FALSE, showPlot = FALSE) {
+  if(is.null(lib)){
+    lib <- paste("1",nrow(dataFrame))
+    pred <- lib
+  }
+  
+  # Run CCM
+  ccm_result <- Simplex(
+    dataFrame = dataFrame,
+    E = E,
+    lib = lib,
+    pred = pred,
+    tau = tau,
+    Tp = Tp,
+    columns = columns,
+    target = target,
+    exclusionRadius = exclusionRadius,
+  )
+  
+  # return(ccm_result)
+  
+  xmap_stats <- ComputeError(ccm_result$Observations,ccm_result$Predictions)
+  
+  # # Extract rho at maximum library size
+  # # max_lib_size <- max(as.numeric(unlist(strsplit(libSizes, " "))))
+  # rho_max <- ccm_result %>%
+  #   # filter(LibrarySize == max_lib_size) %>%
+  #   pull(rho)
+  
+  return(xmap_stats)  # return mae, rmse, and rho
+  # return(xmap_stats$rho)  # or return just rho
+}
+
+do_1_surr_xmap <- function(dataFrame, E, tau, Tp=0, columns, target, lib=NULL, pred=NULL, exclusionRadius, yday_col = "yday") {
+  
+  if(is.null(lib)){
+    lib <- paste("1",nrow(dataFrame))
+    pred <- lib
+  }
+  # Make a temporary data frame with a surrogate of `target`
+  
+  dataFrame_i <- dataFrame
+  dataFrame_i[,target] <- make_yday_surrogate(dataFrame[,yday_col],dataFrame[,target])
+  
+  xmap_stats <- do_1_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target, 
+                        lib=lib, pred=pred, exclusionRadius=exclusionRadius, yday_col = "yday")
+  
+}
+
+
+```
+
+
+#DataFrame
+
+
+```{r}
+
+dataFrame <- readRDS("C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\1)LIB\\ag_df_CR.rds") %>%
+  mutate(yday = yday(date)) %>%
+  select(yday, everything())
+
+dataFrame <- dataFrame[, -c(2)]
+
+tau_i <- 6
+
+ #filename <- file.choose()
+ #print(filename)
+
+
+```
+
+
+#   N = , ag_df_CR
+
+```{r}
+
+
+#change surrogate to regular
+#run regular calc 1 time (no loop)
+#estimmated p value is fraction of surrogates that beat rho max 
+
+tau_i <- 6
+n_surr <- 1 #1
+v_test_var <- c("ph","Celsius","spcond","do","turb","Salinity")
+
+results_surr_xmap <- map_dfr(v_test_var,\(target_i){
+  
+  result_i <- map_dfr(1:n_surr,\(index){
+    temp <-  do_1_surr_xmap(
+      dataFrame,
+      E=6,
+      tau=tau_i,
+      Tp=0,
+      columns="phy",
+      target= "ph",
+      exclusionRadius = tau_i) #do_1_surr_ccm
+    
+    temp$index = index
+    return(temp)
+    })
+  
+  result_i$target = target_i
+  result_i <- result_i %>% select(target,index,everything())
+  return(result_i)
+  
+  
+})
+
+
+
+if (file.exists("result_i_1.rds")) {
+  # If it's saved locally, load the data
+  result_i_1 <- readRDS("result_i_1.rds")
+} else {
+  # If it's not saved locally, read it from Google Sheets and save it locally
+result_i_1 <- result_i 
+  saveRDS(result_i_1, "result_i_1.rds")
+}
+
+
+```
+
+#   N = 1,  Surrogate
+
+```{r}
+
+
+#change surrogate to regular
+#run regular calc 1 time (no loop)
+#estimmated p value is fraction of surrogates that beat rho max 
+
+tau_i <- 6
+n_surr <- 1 #1
+v_test_var <- c("pH","Celsius","spcond","do","turb","Salinity")
+
+results_surr_xmap <- map_dfr(v_test_var,\(target_i){
+  
+  result_i <- map_dfr(1:n_surr,\(index){
+    temp <-  do_1_surr_xmap(Surrogate,E=6,tau=tau_i,Tp=0,columns="phy",target="ph",exclusionRadius = tau_i) #do_1_surr_ccm
+    temp$index = index
+    return(temp)
+    })
+  
+  result_i$target = target_i
+  result_i <- result_i %>% select(target,index,everything())
+  return(result_i)
+  
+  
+})
+
+surrccm_phyph_n1 <- results_surr_xmap
+
+if (file.exists("surrccm_phyph_n1.rds")) {
+  # If it's saved locally, load the data
+  surrccm_phyph_n1 <- readRDS("surrccm_phyph_n1.rds")
+} else {
+  # If it's not saved locally, read it from Google Sheets and save it locally
+surrccm_phyph_1 <- surrccm_phyph_n1
+  saveRDS(surrccm_phyph_n1, "surrccm_phyph_n1.rds")
+}
+
+
+
+library(gridExtra)
+library(grid)
+
+# Define output file path
+output_file <- "surrccm_phyph_1.png"
+
+# Open PNG graphics device
+png(output_file, width = 1200, height = 600, res = 150)  # Adjust size & resolution
+
+# Create table and plot
+grid.newpage()
+grid.table(results_df)
+
+# Close the graphics device
+dev.off()
+
+
+
+
+
+
+
+```
+
+#   N = 500
+
+```{r}
+
+#500 N
+
+tau_i <- 6
+n_surr <-  500 #1
+v_test_var <- c("pH","Celsius","spcond","do","turb","Salinity")
+
+
+results_surr_xmap <- map_dfr(v_test_var,\(target_i){
+  
+  result_i <- map_dfr(1:n_surr,\(index){
+    temp <-  do_1_surr_xmap(Surrogate,E=6,tau=tau_i,Tp=0,columns="phy",target="ph",exclusionRadius = tau_i) 
+    temp$index = index
+    return(temp)
+    })
+  
+  result_i$target = target_i
+  result_i <- result_i %>% select(target,index,everything())
+  return(result_i)
+  
+  
+})
+
+
+surrccm_phyph_n500 <- results_surr_xmap
+
+if (file.exists("surrccm_phyph_n500.rds")) {
+  # If it's saved locally, load the data
+  surrccm_phyph_n500 <- readRDS("surrccm_phyph_n500.rds")
+} else {
+  # If it's not saved locally, read it from Google Sheets and save it locally
+surrccm_phyph_n500 <- surrccm_phyph_n500
+  saveRDS(surrccm_phyph_n500, "surrccm_phyph_n500.rds")
+}
+
+library(dplyr)
+
+
+avg_surrccm_phyph_n500 <- surrccm_phyph_n500 %>%
+  group_by(target) %>%
+  summarise(
+    mean_MAE = mean(MAE, na.rm = TRUE),
+    mean_rho = mean(rho, na.rm = TRUE),
+    mean_RMSE = mean(RMSE, na.rm = TRUE)
+  )
+
+
+library(gridExtra)
+library(grid)
+
+# Define output file path
+output_file <- "avg_surrccm_phyph_n500.png"
+
+# Open PNG graphics device
+png(output_file, width = 1200, height = 600, res = 150)  # Adjust size & resolution
+
+# Create table and plot
+grid.newpage()
+grid.table(output_file)
+
+# Close the graphics device
+dev.off()
+
+
+
+
+```
+
+
+#Surr Test Table 
+```{r}
+
+ 
+
+# surrccm_phyph_n500 <- surrccm_phyph_n500 %>%
+#   group_by(target) %>%
+#   filter(rho == max(rho, na.rm = TRUE))  %>%
+#   select(-index, -MAE, -RMSE)
+
+
+# Create the new column in df
+surrtable <- surrccm_phyph_n1 %>%
+  rowwise() %>%
+  mutate(
+    Pvalue = mean(
+      surrccm_phyph_n500$rho[surrccm_phyph_n500$target == target] >= rho, #mean (psurr >= pmax)
+      na.rm = TRUE
+    ) * 100
+  ) %>%
+  ungroup()
+
+
+surrccm_phyph_n500 <- surrccm_phyph_n500 %>%
+  group_by(target) %>%
+  filter(rho == max(rho, na.rm = TRUE))  %>%
+  select(-index, -MAE, -RMSE)
+
+
+surrtable2 <- left_join(surrccm_phyph_n500,surrccm_phyph_n1 , by = "target")  %>%
+  select(-index, -MAE, -RMSE) %>%
+  rename(
+    pmax = rho.x, #n1
+    psurr = rho.y #n500
+)
+
+surrtable2 <- surrtable2 %>%
+  left_join(select(surrtable, target, Pvalue), by = "target")
+
+
+```
+
+
+
+#CMAPS
+
+```{r}
+
+
+#PH
+
+critical.r <- function( n, alpha = .05 ) {
+  df <- n - 2
+  critical.t <- qt(alpha/2, df, lower.tail = F)
+  critical.r <- sqrt( (critical.t^2) / ( (critical.t^2) + df ) )
+  return(critical.r)
+}
+
+
+cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE)  #start end space in between
+
+ph.phy.corr <- cor(cmap.ph.phy)
+ph.phy.corr <- ph.phy.corr[1, 3]
+
+
+cmap.ph.phy.plot <- plot(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], type = "l",
+     main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], col = "red")
+lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,2], col = "blue")
+abline(h = (abs(ph.phy.corr)), col = "green", lty = 2)
+abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+legend("topright", legend = c(colnames(cmap.ph.phy)[2:3], "Correlation", 
+                              "Critical Correlation"), 
+       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+
+
+#Celsius 
+cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Celsius.phy.corr <- cor(cmap.Celsius.phy)
+Celsius.phy.corr <- Celsius.phy.corr[1, 3]
+
+
+Celsius.phy.plot <- plot(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], type = "l",
+     main = "Celsius V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], col = "red")
+lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,2], col = "blue")
+abline(h = (abs(Celsius.phy.corr)), col = "green", lty = 2)
+abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation", 
+                              "Critical Correlation"), 
+       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+
+
+#spcond
+
+cmap.spcond.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+spcond.phy.corr <- cor(cmap.spcond.phy)
+spcond.phy.corr <- spcond.phy.corr[1, 3]
+
+spcond.phy.plot <- plot(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,3], type = "l",
+     main = "Specific Conductivity V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,3], col = "red")
+lines(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,2], col = "blue")
+abline(h = (abs(spcond.phy.corr)), col = "green", lty = 2)
+abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+legend("topright", legend = c(colnames(cmap.spcond.phy)[2:3], "Correlation", 
+                              "Critical Correlation"), 
+       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+
+
+#do 
+cmap.do.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "do", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+do.phy.corr <- cor(cmap.do.phy)
+do.phy.corr <- do.phy.corr[1, 3]
+
+
+do.phy.plot <- plot(x = cmap.do.phy[,1], y = cmap.do.phy[,3], type = "l",
+     main = "Dissolved Oxygen V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.do.phy[,1], y = cmap.do.phy[,3], col = "red")
+lines(x = cmap.do.phy[,1], y = cmap.do.phy[,2], col = "blue")
+abline(h = (abs(do.phy.corr)), col = "green", lty = 2)
+abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+legend("topright", legend = c(colnames(cmap.do.phy)[2:3], "Correlation", 
+                              "Critical Correlation"), 
+       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+
+
+#TURB
+
+
+cmap.turb.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+turb.phy.corr <- cor(cmap.turb.phy)[1, 3]
+
+
+turb.phy.plot <- plot(x = cmap.turb.phy[,1], y = cmap.turb.phy[,3], type = "l",
+     main = "Turbidity V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.turb.phy[,1], y = cmap.turb.phy[,3], col = "red")
+lines(x = cmap.turb.phy[,1], y = cmap.turb.phy[,2], col = "blue")
+abline(h = (abs(turb.phy.corr)), col = "green", lty = 2)
+abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+legend("topright", legend = c(colnames(cmap.turb.phy)[2:3], "Correlation", 
+                              "Critical Correlation"), 
+       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+
+
+
+#SALINITY
+
+cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Salinity.phy.corr <- cor(cmap.Salinity.phy)
+Salinity.phy.corr <- Salinity.phy.corr[1, 3]
+
+
+Salinity.phy.plot <- plot(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,3], type = "l",
+     main = "Salinity V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,3], col = "red")
+lines(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,2], col = "blue")
+abline(h = (abs(Salinity.phy.corr)), col = "green", lty = 2)
+abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+legend("topright", legend = c(colnames(cmap.Salinity.phy)[2:3], "Correlation", 
+                              "Critical Correlation"), 
+       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+
+
+
+
+
+
+```
+
+
+
+
+
+
+#   CMAP
+
+###CCM EPA BUOY
+```{r}
+ag_df_CR <- na.omit(ag_df_CR)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+##PH
+
+```{r}
+
+tau_i <- 6
+
+ag_df_CR <- readRDS("C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\1)LIB\\ag_df_CR.rds")
+ag_df_CR <- na.omit(ag_df_CR)
+
+library(rEDM)
+
+#No "Includeddata = TRUE"
+
+#CMAPS
+
+#cmap.ph.del_phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "ph", target = #"del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE)
+
+cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE)  #start end space in between
+
+cmap.ph.chl <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+
+
+#Surrogates
+# 
+# Surr.cmap.ph.phy <- CCM(dataFrame = Surrogate, E = 2, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+#Surr.cmap.ph.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "chl", target # = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# Surr.cmap.ph.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "ph", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+
+#lib_sizes = "1169"
+#sample = "100"
+#random=FALSE
+
+
+#CMAP Correlations 
+
+#ph.del_phy.corr <- cor(cmap.ph.del_phy)
+#ph.del_phy.corr <- ph.del_phy.corr[1, 3]
+
+ph.phy.corr <- cor(cmap.ph.phy)
+ph.phy.corr <- ph.phy.corr[1, 3]
+
+ph.chl.corr <- cor(cmap.ph.chl)
+ph.chl.corr <- ph.chl.corr[1, 3]
+
+#Surrogate Correlations 
+
+Surr.ph.del_phy.corr <- cor(Surr.cmap.ph.del_phy)
+Surr.ph.del_phy.corr <- Surr.ph.del_phy.corr[1, 3]
+
+Surr.ph.phy.corr <- cor(Surr.cmap.ph.phy)
+Surr.ph.phy.corr <- Surr.ph.phy.corr[1, 3]
+
+Surr.ph.chl.corr <- cor(Surr.cmap.ph.chl)
+Surr.ph.chl.corr <- Surr.ph.chl.corr[1, 3]
+
+#CMAP PLOTS
+# 
+# #ph.del
+# plot(x = cmap.ph.del[,1], y = cmap.ph.del[,2], type = "l",
+#      main = "Ph V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+# lines(x = cmap.ph.del[,1], y = cmap.ph.del[,3], col = "red")
+# abline(h = ph.del.corr, col = "green", lty = 2)
+# legend("topright", legend = c(colnames(cmap.ph.del)[2:3], "Correlation"), 
+#        col = c("blue", "red", "green"), lty = c(1, 1, 2))
+#ph.phy
+
+cmap.ph.phy.plot <- plot(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], type = "l",
+     main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], col = "red")
+lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,2], col = "blue")
+abline(h = (abs(ph.phy.corr)), col = "green", lty = 2)
+abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+legend("topright", legend = c(colnames(cmap.ph.phy)[2:3], "Correlation", 
+                              "Critical Correlation"), 
+       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+
+
+#ph.chl
+
+plot(x = cmap.ph.chl[,1], y = cmap.ph.chl[,2], type = "l",
+     main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.ph.chl[,1], y = cmap.ph.chl,3], col = "red")
+abline(h = ph.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.ph.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+
+#Surrogate Plots
+# 
+# 
+# #ph.del
+# plot(x = Surr.cmap.ph.del[,1], y = Surr.cmap.ph.del[,2], type = "l",
+#      main = "Ph V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+# lines(x = Surr.cmap.ph.del[,1], y = Surr.cmap.ph.del[,3], col = "red")
+# abline(h = Surr.ph.del.corr, col = "green", lty = 2)
+# legend("topright", legend = c(colnames(Surr.cmap.ph.del)[2:3], "Correlation"),
+#        col = c("blue", "red", "green"), lty = c(1, 1, 2))
+#ph.phy
+plot(x = Surr.cmap.ph.phy[,1], y = Surr.cmap.ph.phy[,2], type = "l",
+     main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.ph.phy[,1], y = Surr.cmap.ph.phy[,3], col = "red")
+abline(h = Surr.ph.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.ph.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+#ph.chl
+
+plot(x = Surr.cmap.ph.chl[,1], y = Surr.cmap.ph.chl[,2], type = "l",
+     main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.ph.chl[,1], y = Surr.cmap.ph.chl,3], col = "red")
+abline(h = Surr.ph.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.ph.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+
+#CMAP INCLUDE DATA
+
+#CMAP 
+# 
+# cmap.ph.del_phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "ph", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.ph.phy2 <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE, includeData = TRUE)  #start end space in between
+
+  
+  # CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.ph.chl2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "ph", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+#Surrogates
+# 
+# Surr.cmap.del_ph.phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "ph", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.ph.phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.ph.phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "ph", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+
+#LIBMEAN PLOT
+
+ #PHY
+ 
+  cmap.ph.phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`ph:phy`,color="ph:phy")) +
+  geom_line(aes(y=`phy:ph`,color="phy:ph")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$ph,ag_df_CR$phy)),lty=2) #CORR of REG?
+  
+#DEL_PHY
+# 
+#  cmap.ph.del_phy2$LibMeans %>% 
+#   ggplot(aes(x=LibSize)) +
+#   geom_line(aes(y=`ph:phy`,color="ph:del_phy")) +
+#   geom_line(aes(y=`phy:ph`,color="del_phy:ph")) +
+#   geom_hline(aes(yintercept = cor(ag_df_CR$ph,ag_df_CR$del_phy)),lty=2)
+ 
+ 
+#CHL
+ 
+ cmap.ph.chl2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`ph:phy`,color="ph:chl")) +
+  geom_line(aes(y=`phy:ph`,color="chl:ph")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$ph,ag_df_CR$chl)),lty=2)
+ 
+ 
+ #Surrogate PHY
+ 
+  Surr.cmap.ph.phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`ph:phy`,color="ph:phy")) +
+  geom_line(aes(y=`phy:ph`,color="phy:ph")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$ph,ag_df_CR$phy)),lty=2)
+  
+# #Surrogate DEL_PHY
+# 
+#  Surr.cmap.ph.del_phy2$LibMeans %>% 
+#   ggplot(aes(x=LibSize)) +
+#   geom_line(aes(y=`ph:phy`,color="ph:del_phy")) +
+#   geom_line(aes(y=`phy:ph`,color="del_phy:ph")) +
+#   geom_hline(aes(yintercept = cor(ag_df_CR$ph,ag_df_CR$del_phy)),lty=2)
+ 
+ 
+#Surrogate CHL
+ 
+ Surr.cmap.ph.chl2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`ph:phy`,color="ph:chl")) +
+  geom_line(aes(y=`phy:ph`,color="chl:ph")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$ph,ag_df_CR$chl)),lty=2)
+ 
+ 
+ 
+#PREDICTSTAT PLOT: Rho V. LibSize 
+
+cmap.ph.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+# 
+# cmap.ph.del_phy2$CCM1_PredictStat %>%
+#   ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+#   geom_jitter() + stat_summary(fun = median,geom="line")
+
+
+cmap.ph.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+#PREDICTSTAT PLOT
+
+Surr.cmap.ph.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+# 
+# Surr.cmap.ph.del_phy2$CCM1_PredictStat %>%
+#   ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+#   geom_jitter() + stat_summary(fun = median,geom="line")
+
+
+Surr.cmap.ph.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+
+#EMBED DIMENSION 
+
+
+#EmbedDimension(dataFrame = ag_df_CR,Tp = 0, columns = "ph",
+               #target = "phy",lib="1 1174",pred="1 1174",
+               #tau=-7)
+
+
+#EmbedDimension(dataFrame = ag_df_CR,Tp = 0, columns = "ph",
+               #target = "del_phy",lib="1 1174",pred="1 1174",
+               #tau=-7)
+
+#EmbedDimension(dataFrame = ag_df_CR,Tp = 0, columns = "ph",
+               #target = "chl",lib="1 1174",pred="1 1174",
+               #tau=-7)
+
+
+#EmbedDimension(dataFrame = Surrogate,Tp = 0, columns = "ph",
+               #target = "phy",lib="1 1174",pred="1 1174",
+               #tau=-7)
+
+
+#EmbedDimension(dataFrame = Surrogate,Tp = 0, columns = "ph",
+               #target = "del_phy",lib="1 1174",pred="1 1174",
+               #tau=-7)
+
+#EmbedDimension(dataFrame = Surrogate,Tp = 0, columns = "ph",
+               #target = "chl",lib="1 1174",pred="1 1174",
+               #tau=-7)
+
+
+
+
+```
+
+
+
+##Celsius
+
+```{r}
+
+
+cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.Celsius.del_phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.Celsius.chl <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Celsius"", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+
+Surr.cmap.Celsius.phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.Celsius.del_phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.Celsius.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Celsius"", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# CMAP Correlations
+Celsius.phy.corr <- cor(cmap.Celsius.phy)
+Celsius.phy.corr <- Celsius.phy.corr[1, 3]
+
+Celsius.del_phy.corr <- cor(cmap.Celsius.del_phy)
+Celsius.del_phy.corr <- Celsius.del_phy.corr[1, 3]
+
+Celsius.chl.corr <- cor(cmap.Celsius.chl)
+Celsius.chl.corr <- Celsius.chl.corr[1, 3]
+
+# Surrogate Correlations
+Surr.Celsius.phy.corr <- cor(Surr.cmap.Celsius.phy)
+Surr.Celsius.phy.corr <- Surr.Celsius.phy.corr[1, 3]
+
+Surr.Celsius.del_phy.corr <- cor(Surr.cmap.Celsius.del_phy)
+Surr.Celsius.del_phy.corr <- Surr.Celsius.del_phy.corr[1, 3]
+
+Surr.Celsius.chl.corr <- cor(Surr.cmap.Celsius.chl)
+Surr.Celsius.chl.corr <- Surr.Celsius.chl.corr[1, 3]
+
+# CMAP PLOTS
+# Celsius.phy
+plot(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,2], type = "l",
+     main = "Celsius V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], col = "red")
+abline(h = Celsius.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Celsius.del_phy
+plot(x = cmap.Celsius.del_phy[,1], y = cmap.Celsius.del_phy[,2], type = "l",
+     main = "Celsius V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.Celsius.del_phy[,1], y = cmap.Celsius.del_phy[,3], col = "red")
+abline(h = Celsius.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.Celsius.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Celsius.chl
+plot(x = cmap.Celsius.chl[,1], y = cmap.Celsius.chl[,2], type = "l",
+     main = "Celsius V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.Celsius.chl[,1], y = cmap.Celsius.chl[,3], col = "red")
+abline(h = Celsius.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.Celsius.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate PLOTS
+# Surrogate Celsius.phy
+plot(x = Surr.cmap.Celsius.phy[,1], y = Surr.cmap.Celsius.phy[,2], type = "l",
+     main = "Celsius V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.Celsius.phy[,1], y = Surr.cmap.Celsius.phy[,3], col = "red")
+abline(h = Surr.Celsius.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.Celsius.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate Celsius.del_phy
+plot(x = Surr.cmap.Celsius.del_phy[,1], y = Surr.cmap.Celsius.del_phy[,2], type = "l",
+     main = "Celsius V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.Celsius.del_phy[,1], y = Surr.cmap.Celsius.del_phy[,3], col = "red")
+abline(h = Surr.Celsius.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.Celsius.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate Celsius.chl
+plot(x = Surr.cmap.Celsius.chl[,1], y = Surr.cmap.Celsius.chl[,2], type = "l",
+     main = "Celsius V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.Celsius.chl[,1], y = Surr.cmap.Celsius.chl[,3], col = "red")
+abline(h = Surr.Celsius.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.Celsius.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# CMAP INCLUDE DATA
+# CMAP 
+cmap.Celsius.phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.Celsius.del_phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.Celsius.chl2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+# Surrogates
+Surr.cmap.Celsius.phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.Celsius.del_phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.Celsius.chl2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Celsius", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+# LIBMEAN PLOT
+# PHY
+cmap.Celsius.phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Celsius:phy`,color="Celsius:phy")) +
+  geom_line(aes(y=`phy:Celsius`,color="phy:Celsius")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Celsius,ag_df_CR$phy)),lty=2)
+  
+# DEL_PHY
+cmap.Celsius.del_phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Celsius:phy`,color="Celsius:del_phy")) +
+  geom_line(aes(y=`del_phy:Celsius`,color="del_phy:Celsius")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Celsius,ag_df_CR$del_phy)),lty=2)
+ 
+# CHL
+cmap.Celsius.chl2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Celsius:phy`,color="Celsius:chl")) +
+  geom_line(aes(y=`chl:Celsius`,color="chl:Celsius")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Celsius,ag_df_CR$chl)),lty=2)
+
+# Surrogate PHY
+Surr.cmap.Celsius.phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Celsius:phy`,color="Celsius:phy")) +
+  geom_line(aes(y=`phy:Celsius`,color="phy:Celsius")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Celsius,ag_df_CR$phy)),lty=2)
+  
+# Surrogate DEL_PHY
+Surr.cmap.Celsius.del_phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Celsius:phy`,color="Celsius:del_phy")) +
+  geom_line(aes(y=`del_phy:Celsius`,color="del_phy:Celsius")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Celsius,ag_df_CR$del_phy)),lty=2)
+ 
+# Surrogate CHL
+Surr.cmap.Celsius.chl2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Celsius:phy`,color="Celsius:chl")) +
+  geom_line(aes(y=`chl:Celsius`,color="chl:Celsius")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Celsius,ag_df_CR$chl)),lty=2)
+
+
+# PREDICTSTAT PLOT
+cmap.Celsius.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+cmap.Celsius.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+cmap.Celsius.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+# PREDICTSTAT PLOT
+Surr.cmap.Celsius.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+Surr.cmap.Celsius.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+Surr.cmap.Celsius.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+# EMBED DIMENSION
+# EmbedDimension for PHY
+EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "Celsius",
+               target = "phy", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for DEL_PHY
+EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "Celsius",
+               target = "del_phy", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for CHL
+EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "Celsius",
+               target = "chl", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for Surrogate PHY
+EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "Celsius",
+               target = "phy", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for Surrogate DEL_PHY
+EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "Celsius",
+               target = "del_phy", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for Surrogate CHL
+EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "Celsius",
+               target = "chl", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+
+```
+
+##SPCOND
+
+```{r}
+
+
+cmap.spcond.phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.spcond.del_phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.spcond.chl <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "spcond"", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+
+Surr.cmap.spcond.phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.spcond.del_phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.spcond.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# CMAP Correlations
+spcond.phy.corr <- cor(cmap.spcond.phy)
+spcond.phy.corr <- spcond.phy.corr[1, 3]
+
+spcond.del_phy.corr <- cor(cmap.spcond.del_phy)
+spcond.del_phy.corr <- spcond.del_phy.corr[1, 3]
+
+spcond.chl.corr <- cor(cmap.spcond.chl)
+spcond.chl.corr <- spcond.chl.corr[1, 3]
+
+# Surrogate Correlations
+Surr.spcond.phy.corr <- cor(Surr.cmap.spcond.phy)
+Surr.spcond.phy.corr <- Surr.spcond.phy.corr[1, 3]
+
+Surr.spcond.del_phy.corr <- cor(Surr.cmap.spcond.del_phy)
+Surr.spcond.del_phy.corr <- Surr.spcond.del_phy.corr[1, 3]
+
+Surr.spcond.chl.corr <- cor(Surr.cmap.spcond.chl)
+Surr.spcond.chl.corr <- Surr.spcond.chl.corr[1, 3]
+
+# CMAP PLOTS
+# spcond.phy
+plot(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,2], type = "l",
+     main = "spcond V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,3], col = "red")
+abline(h = spcond.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.spcond.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# spcond.del_phy
+plot(x = cmap.spcond.del_phy[,1], y = cmap.spcond.del_phy[,2], type = "l",
+     main = "spcond V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.spcond.del_phy[,1], y = cmap.spcond.del_phy[,3], col = "red")
+abline(h = spcond.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.spcond.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# spcond.chl
+plot(x = cmap.spcond.chl[,1], y = cmap.spcond.chl[,2], type = "l",
+     main = "spcond V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.spcond.chl[,1], y = cmap.spcond.chl[,3], col = "red")
+abline(h = spcond.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.spcond.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate PLOTS
+# Surrogate spcond.phy
+plot(x = Surr.cmap.spcond.phy[,1], y = Surr.cmap.spcond.phy[,2], type = "l",
+     main = "spcond V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.spcond.phy[,1], y = Surr.cmap.spcond.phy[,3], col = "red")
+abline(h = Surr.spcond.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.spcond.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate spcond.del_phy
+plot(x = Surr.cmap.spcond.del_phy[,1], y = Surr.cmap.spcond.del_phy[,2], type = "l",
+     main = "spcond V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.spcond.del_phy[,1], y = Surr.cmap.spcond.del_phy[,3], col = "red")
+abline(h = Surr.spcond.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.spcond.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate spcond.chl
+plot(x = Surr.cmap.spcond.chl[,1], y = Surr.cmap.spcond.chl[,2], type = "l",
+     main = "spcond V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.spcond.chl[,1], y = Surr.cmap.spcond.chl[,3], col = "red")
+abline(h = Surr.spcond.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.spcond.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# CMAP INCLUDE DATA
+# CMAP 
+cmap.spcond.phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.spcond.del_phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.spcond.chl2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+# Surrogates
+Surr.cmap.spcond.phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.spcond.del_phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.spcond.chl2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "spcond", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+# LIBMEAN PLOTS
+# PHY
+cmap.spcond.phy2$LibMeans %>%
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `spcond:phy`, color = "spcond:phy")) +
+  geom_line(aes(y = `phy:spcond`, color = "phy:spcond")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$spcond, ag_df_CR$phy)), lty = 2)
+
+# DEL_PHY
+cmap.spcond.del_phy2$LibMeans %>%
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `spcond:del_phy`, color = "spcond:del_phy")) +
+  geom_line(aes(y = `del_phy:spcond`, color = "del_phy:spcond")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$spcond, ag_df_CR$del_phy)), lty = 2)
+
+# CHL
+cmap.spcond.chl2$LibMeans %>%
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `spcond:chl`, color = "spcond:chl")) +
+  geom_line(aes(y = `chl:spcond`, color = "chl:spcond")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$spcond, ag_df_CR$chl)), lty = 2)
+
+# Surrogate PHY
+Surr.cmap.spcond.phy2$LibMeans %>%
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `spcond:phy`, color = "spcond:phy")) +
+  geom_line(aes(y = `phy:spcond`, color = "phy:spcond")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$spcond, ag_df_CR$phy)), lty = 2)
+
+# Surrogate DEL_PHY
+Surr.cmap.spcond.del_phy2$LibMeans %>%
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `spcond:del_phy`, color = "spcond:del_phy")) +
+  geom_line(aes(y = `del_phy:spcond`, color = "del_phy:spcond")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$spcond, ag_df_CR$del_phy)), lty = 2)
+
+# Surrogate CHL
+Surr.cmap.spcond.chl2$LibMeans %>%
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `spcond:chl`, color = "spcond:chl")) +
+  geom_line(aes(y = `chl:spcond`, color = "chl:spcond")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$spcond, ag_df_CR$chl)), lty = 2)
+
+# PREDICTSTAT PLOTS
+cmap.spcond.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+cmap.spcond.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+cmap.spcond.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+Surr.cmap.spcond.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+Surr.cmap.spcond.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+Surr.cmap.spcond.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+  
+  # EMBED DIMENSION
+# EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "spcond", target = "phy", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "spcond", target = "del_phy", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "spcond", target = "chl", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "spcond", target = "phy", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "spcond", target = "del_phy", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "spcond", target = "chl", lib = "1 1174", pred = "1 1174", tau = -7)
+
+
+```
+
+#DO
+
+
+
+```{r}
+
+cmap.do.phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "do", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.do.del_phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "do", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.spcond.chl <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "do", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+
+Surr.cmap.do.phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "do", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.do.del_phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "do", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.spcond.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "do", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# CMAP Correlations
+do.phy.corr <- cor(cmap.do.phy)
+do.phy.corr <- do.phy.corr[1, 3]
+
+do.del_phy.corr <- cor(cmap.do.del_phy)
+do.del_phy.corr <- do.del_phy.corr[1, 3]
+
+spcond.chl.corr <- cor(cmap.spcond.chl)
+spcond.chl.corr <- spcond.chl.corr[1, 3]
+
+# Surrogate Correlations
+Surr.do.phy.corr <- cor(Surr.cmap.do.phy)
+Surr.do.phy.corr <- Surr.do.phy.corr[1, 3]
+
+Surr.do.del_phy.corr <- cor(Surr.cmap.do.del_phy)
+Surr.do.del_phy.corr <- Surr.do.del_phy.corr[1, 3]
+
+Surr.spcond.chl.corr <- cor(Surr.cmap.spcond.chl)
+Surr.spcond.chl.corr <- Surr.spcond.chl.corr[1, 3]
+
+# CMAP PLOTS
+# do.phy
+plot(x = cmap.do.phy[,1], y = cmap.do.phy[,2], type = "l",
+     main = "DO V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.do.phy[,1], y = cmap.do.phy[,3], col = "red")
+abline(h = do.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.do.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# do.del_phy
+plot(x = cmap.do.del_phy[,1], y = cmap.do.del_phy[,2], type = "l",
+     main = "DO V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.do.del_phy[,1], y = cmap.do.del_phy[,3], col = "red")
+abline(h = do.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.do.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# spcond.chl
+plot(x = cmap.spcond.chl[,1], y = cmap.spcond.chl[,2], type = "l",
+     main = "DO V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.spcond.chl[,1], y = cmap.spcond.chl[,3], col = "red")
+abline(h = spcond.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.spcond.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate PLOTS
+# Surrogate do.phy
+plot(x = Surr.cmap.do.phy[,1], y = Surr.cmap.do.phy[,2], type = "l",
+     main = "DO V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.do.phy[,1], y = Surr.cmap.do.phy[,3], col = "red")
+abline(h = Surr.do.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.do.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate do.del_phy
+plot(x = Surr.cmap.do.del_phy[,1], y = Surr.cmap.do.del_phy[,2], type = "l",
+     main = "DO V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.do.del_phy[,1], y = Surr.cmap.do.del_phy[,3], col = "red")
+abline(h = Surr.do.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.do.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate spcond.chl
+plot(x = Surr.cmap.spcond.chl[,1], y = Surr.cmap.spcond.chl[,2], type = "l",
+     main = "DO V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.spcond.chl[,1], y = Surr.cmap.spcond.chl[,3], col = "red")
+abline(h = Surr.spcond.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.spcond.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# CMAP INCLUDE DATA
+# CMAP 
+cmap.do.phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "do", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.do.del_phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "do", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.spcond.chl2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "do", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+# Surrogates
+Surr.cmap.do.phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "do", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.do.del_phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "do", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.spcond.chl2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "do", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+# LIBMEAN PLOT
+# PHY
+cmap.do.phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`do:phy`,color="do:phy")) +
+  geom_line(aes(y=`phy:do`,color="phy:do")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$do,ag_df_CR$phy)),lty=2)
+  
+# DEL_PHY
+cmap.do.del_phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`do:phy`,color="do:del_phy")) +
+  geom_line(aes(y=`del_phy:do`,color="del_phy:do")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$do,ag_df_CR$del_phy)),lty=2)
+ 
+# CHL
+cmap.spcond.chl2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`do:phy`,color="do:chl")) +
+  geom_line(aes(y=`chl:do`,color="chl:do")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$do,ag_df_CR$chl)),lty=2)
+
+# Surrogate PHY
+Surr.cmap.do.phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`do:phy`,color="do:phy")) +
+  geom_line(aes(y=`phy:do`,color="phy:do")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$do,ag_df_CR$phy)),lty=2)
+  
+# Surrogate DEL_PHY
+Surr.cmap.do.del_phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`do:phy`,color="do:del_phy")) +
+  geom_line(aes(y=`del_phy:do`,color="del_phy:do")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$do,ag_df_CR$del_phy)),lty=2)
+ 
+# Surrogate CHL
+Surr.cmap.spcond.chl2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`do:phy`,color="do:chl")) +
+  geom_line(aes(y=`chl:do`,color="chl:do")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$do,ag_df_CR$chl)),lty=2)
+
+# PREDICTSTAT PLOT
+cmap.do.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+cmap.do.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize))
+
+
++ geom_jitter() + stat_summary(fun = median,geom="line")
+
+cmap.spcond.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+# PREDICTSTAT PLOT for Surrogate PHY
+Surr.cmap.do.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+# PREDICTSTAT PLOT for Surrogate DEL_PHY
+Surr.cmap.do.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+# PREDICTSTAT PLOT for Surrogate CHL
+Surr.cmap.spcond.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+# EMBED DIMENSION
+# EmbedDimension for PHY
+EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "do",
+               target = "phy", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for DEL_PHY
+EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "do",
+               target = "del_phy", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for CHL
+EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "do",
+               target = "chl", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for Surrogate PHY
+EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "do",
+               target = "phy", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for Surrogate DEL_PHY
+EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "do",
+               target = "del_phy", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+# EmbedDimension for Surrogate CHL
+EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "do",
+               target = "chl", lib = "1 1174", pred = "1 1174",
+               tau = -7)
+
+
+
+```
+
+
+#TURB
+
+```{r}
+
+cmap.turb.phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.turb.del_phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "turb", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.turb.chl <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "turb", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.turb.phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.turb.del_phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "turb", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.turb.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "turb", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# CMAP
+cmap.turb.phy <- CCM(dataFrame = ag_df_CR, E = 5, tau = -7, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.turb.del_phy <- CCM(dataFrame = ag_df_CR, E = 5, tau = -7, Tp = 0, columns = "turb", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.turb.chl <- CCM(dataFrame = ag_df_CR, E = 5, tau = -7, Tp = 0, columns = "turb", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# Surrogates
+Surr.cmap.turb.phy <- CCM(dataFrame = Surrogate, E = 5, tau = -7, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.turb.del_phy <- CCM(dataFrame = Surrogate, E = 5, tau = -7, Tp = 0, columns = "turb", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.turb.chl <- CCM(dataFrame = Surrogate, E = 5, tau = -7, Tp = 0, columns = "turb", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# CMAP CORRELATIONS
+turb.phy.corr <- cor(cmap.turb.phy)[1, 3]
+turb.del_phy.corr <- cor(cmap.turb.del_phy)[1, 3]
+turb.chl.corr <- cor(cmap.turb.chl)[1, 3]
+
+# Surrogate Correlations
+Surr.turb.phy.corr <- cor(Surr.cmap.turb.phy)[1, 3]
+Surr.turb.del_phy.corr <- cor(Surr.cmap.turb.del_phy)[1, 3]
+Surr.turb.chl.corr <- cor(Surr.cmap.turb.chl)[1, 3]
+
+# CMAP PLOTS
+# turb.phy
+plot(x = cmap.turb.phy[,1], y = cmap.turb.phy[,2], type = "l",
+     main = "turb V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.turb.phy[,1], y = cmap.turb.phy[,3], col = "red")
+abline(h = turb.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.turb.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# turb.del_phy
+plot(x = cmap.turb.del_phy[,1], y = cmap.turb.del_phy[,2], type = "l",
+     main = "turb V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.turb.del_phy[,1], y = cmap.turb.del_phy[,3], col = "red")
+abline(h = turb.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.turb.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# turb.chl
+plot(x = cmap.turb.chl[,1], y = cmap.turb.chl[,2], type = "l",
+     main = "turb V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.turb.chl[,1], y = cmap.turb.chl[,3], col = "red")
+abline(h = turb.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.turb.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# SURROGATE PLOTS
+# Surrogate turb.phy
+plot(x = Surr.cmap.turb.phy[,1], y = Surr.cmap.turb.phy[,2], type = "l",
+     main = "turb V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.turb.phy[,1], y = Surr.cmap.turb.phy[,3], col = "red")
+abline(h = Surr.turb.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.turb.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate turb.del_phy
+plot(x = Surr.cmap.turb.del_phy[,1], y = Surr.cmap.turb.del_phy[,2], type = "l",
+     main = "turb V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.turb.del_phy[,1], y = Surr.cmap.turb.del_phy[,3], col = "red")
+abline(h = Surr.turb.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.turb.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate turb.chl
+plot(x = Surr.cmap.turb.chl[,1], y = Surr.cmap.turb.chl[,2], type = "l",
+     main = "turb V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.turb.chl[,1], y =Surr.cmap.turb.chl[,3], col = "red")
+abline(h = Surr.turb.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.turb.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# CMAP INCLUDE DATA
+# CMAP
+cmap.turb.phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau = -7, Tp = 0, columns = "turb", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE, includeData = TRUE)
+
+cmap.turb.del_phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau = -7, Tp = 0, columns = "turb", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE, includeData = TRUE)
+
+cmap.turb.chl2 <- CCM(dataFrame = ag_df_CR, E = 5, tau = -7, Tp = 0, columns = "turb", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE, includeData = TRUE)
+
+# Surrogates
+Surr.cmap.turb.phy2 <- CCM(dataFrame = Surrogate, E = 5, tau = -7, Tp = 0, columns = "turb", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE, includeData = TRUE)
+
+Surr.cmap.turb.del_phy2 <- CCM(dataFrame = Surrogate, E = 5, tau = -7, Tp = 0, columns = "turb", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE, includeData = TRUE)
+
+Surr.cmap.turb.chl2 <- CCM(dataFrame = Surrogate, E = 5, tau = -7, Tp = 0, columns = "turb", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE, includeData = TRUE)
+
+# LIBMEAN PLOT
+# PHY
+cmap.turb.phy2$LibMeans %>% 
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `turb:phy`, color = "turb:phy")) +
+  geom_line(aes(y = `phy:turb`, color = "phy:turb")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$turb, ag_df_CR$phy)), lty = 2)
+
+# DEL_PHY
+cmap.turb.del_phy2$LibMeans %>% 
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `turb:phy`, color = "turb:del_phy")) +
+  geom_line(aes(y = `phy:turb`, color = "del_phy:turb")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$turb, ag_df_CR$del_phy)), lty = 2)
+
+# CHL
+cmap.turb.chl2$LibMeans %>% 
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `turb:phy`, color = "turb:chl")) +
+  geom_line(aes(y = `phy:turb`, color = "chl:turb")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$turb, ag_df_CR$chl)), lty = 2)
+
+# Surrogate PHY
+Surr.cmap.turb.phy2$LibMeans %>% 
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `turb:phy`, color = "turb:phy")) +
+  geom_line(aes(y = `phy:turb`, color = "phy:turb")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$turb, ag_df_CR$phy)), lty = 2)
+
+# Surrogate DEL_PHY
+Surr.cmap.turb.del_phy2$LibMeans %>% 
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `turb:phy`, color = "turb:del_phy")) +
+  geom_line(aes(y = `phy:turb`, color = "del_phy:turb")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$turb, ag_df_CR$del_phy)), lty = 2)
+
+# Surrogate CHL
+Surr.cmap.turb.chl2$LibMeans %>% 
+  ggplot(aes(x = LibSize)) +
+  geom_line(aes(y = `turb:phy`, color = "turb:chl")) +
+  geom_line(aes(y = `phy:turb`, color = "chl:turb")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$turb, ag_df_CR$chl)), lty = 2)
+
+# PREDICTSTAT PLOT
+cmap.turb.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) + 
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+cmap.turb.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) + 
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+cmap.turb.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) + 
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+# Surrogate PHY
+Surr.cmap.turb.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) + 
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+# Surrogate DEL_PHY
+Surr.cmap.turb.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) + 
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+# Surrogate CHL
+Surr.cmap.turb.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) + 
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+
+
+# PREDICTSTAT PLOTS
+cmap.turb.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+cmap.turb.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+cmap.turb.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+Surr.cmap.turb.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+Surr.cmap.turb.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+Surr.cmap.turb.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x = LibSize, y = rho, group = LibSize)) +
+  geom_jitter() + 
+  stat_summary(fun = median, geom = "line")
+
+# EMBED DIMENSION
+# Uncomment and replace the placeholder values with appropriate parameters.
+# EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "do", target = "phy", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "do", target = "del_phy", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "do", target = "chl", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "do", target = "phy", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "do", target = "del_phy", lib = "1 1174", pred = "1 1174", tau = -7)
+# EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "do", target = "chl", lib = "1 1174", pred = "1 1174", tau = -7)
+
+
+        
+        
+    
+
+```
+
+#Salinity
+
+```{r}
+
+cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.Salinity.del_phy <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.Salinity.chl <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+
+Surr.cmap.Salinity.phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.Salinity.del_phy <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.Salinity.chl <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "chl", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# CMAP Correlations
+Salinity.phy.corr <- cor(cmap.Salinity.phy)
+Salinity.phy.corr <- Salinity.phy.corr[1, 3]
+
+Salinity.del_phy.corr <- cor(cmap.Salinity.del_phy)
+Salinity.del_phy.corr <- Salinity.del_phy.corr[1, 3]
+
+Salinity.chl.corr <- cor(cmap.Salinity.chl)
+Salinity.chl.corr <- Salinity.chl.corr[1, 3]
+
+# Surrogate Correlations
+Surr.Salinity.phy.corr <- cor(Surr.cmap.Salinity.phy)
+Surr.Salinity.phy.corr <- Surr.Salinity.phy.corr[1, 3]
+
+Surr.Salinity.del_phy.corr <- cor(Surr.cmap.Salinity.del_phy)
+Surr.Salinity.del_phy.corr <- Surr.Salinity.del_phy.corr[1, 3]
+
+Surr.Salinity.chl.corr <- cor(Surr.cmap.Salinity.chl)
+Surr.Salinity.chl.corr <- Surr.Salinity.chl.corr[1, 3]
+
+# CMAP PLOTS
+# Salinity.phy
+plot(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,2], type = "l",
+     main = "Salinity V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,3], col = "red")
+abline(h = Salinity.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.Salinity.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Salinity.del_phy
+plot(x = cmap.Salinity.del_phy[,1], y = cmap.Salinity.del_phy[,2], type = "l",
+     main = "Salinity V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.Salinity.del_phy[,1], y = cmap.Salinity.del_phy[,3], col = "red")
+abline(h = Salinity.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.Salinity.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Salinity.chl
+plot(x = cmap.Salinity.chl[,1], y = cmap.Salinity.chl[,2], type = "l",
+     main = "Salinity V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = cmap.Salinity.chl[,1], y = cmap.Salinity.chl[,3], col = "red")
+abline(h = Salinity.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.Salinity.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate PLOTS
+# Surrogate Salinity.phy
+plot(x = Surr.cmap.Salinity.phy[,1], y = Surr.cmap.Salinity.phy[,2], type = "l",
+     main = "Salinity V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.Salinity.phy[,1], y = Surr.cmap.Salinity.phy[,3], col = "red")
+abline(h = Surr.Salinity.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.Salinity.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate Salinity.del_phy
+plot(x = Surr.cmap.Salinity.del_phy[,1], y = Surr.cmap.Salinity.del_phy[,2], type = "l",
+     main = "Salinity V. del_phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.Salinity.del_phy[,1], y = Surr.cmap.Salinity.del_phy[,3], col = "red")
+abline(h = Surr.Salinity.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.Salinity.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate Salinity.chl
+plot(x = Surr.cmap.Salinity.chl[,1], y = Surr.cmap.Salinity.chl[,2], type = "l",
+     main = "Salinity V. chl ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+lines(x = Surr.cmap.Salinity.chl[,1], y = Surr.cmap.Salinity.chl[,3], col = "red")
+abline(h = Surr.Salinity.chl.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.Salinity.chl)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# CMAP INCLUDE DATA
+# CMAP 
+cmap.Salinity.phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.Salinity.del_phy2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+cmap.Salinity.chl2 <- CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+# Surrogates
+Surr.cmap.Salinity.phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.Salinity.del_phy2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "del_phy", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+Surr.cmap.Salinity.chl2 <- CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "Salinity", target = "chl", libSizes = "20 200 20", sample = 100, showPlot = TRUE,includeData = TRUE)
+
+# LIBMEAN PLOT
+# PHY
+cmap.Salinity.phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Salinity:phy`,color="Salinity:phy")) +
+  geom_line(aes(y=`phy:Salinity`,color="phy:Salinity")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Salinity,ag_df_CR$phy)),lty=2)
+  
+# DEL_PHY
+cmap.Salinity.del_phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Salinity:phy`,color="Salinity:del_phy")) +
+  geom_line(aes(y=`del_phy:Salinity`,color="del_phy:Salinity")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Salinity,ag_df_CR$del_phy)),lty=2)
+ 
+# CHL
+cmap.Salinity.chl2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Salinity:phy`,color="Salinity:chl")) +
+  geom_line(aes(y=`chl:Salinity`,color="chl:Salinity")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Salinity,ag_df_CR$chl)),lty=2)
+
+# Surrogate PHY
+Surr.cmap.Salinity.phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Salinity:phy`,color="Salinity:phy")) +
+  geom_line(aes(y=`phy:Salinity`,color="phy:Salinity")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Salinity,ag_df_CR$phy)),lty=2)
+  
+# Surrogate DEL_PHY
+Surr.cmap.Salinity.del_phy2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Salinity:phy`,color="Salinity:del_phy")) +
+  geom_line(aes(y=`del_phy:Salinity`,color="del_phy:Salinity")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Salinity,ag_df_CR$del_phy)),lty=2)
+ 
+# Surrogate CHL
+Surr.cmap.Salinity.chl2$LibMeans %>% 
+  ggplot(aes(x=LibSize)) +
+  geom_line(aes(y=`Salinity:phy`,color="Salinity:chl")) +
+  geom_line(aes(y=`chl:Salinity`,color="chl:Salinity")) +
+  geom_hline(aes(yintercept = cor(ag_df_CR$Salinity,ag_df_CR$chl)),lty=2)
+
+# PREDICTSTAT PLOT
+cmap.Salinity.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+cmap.Salinity.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+cmap.Salinity.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+# Surrogate PREDICTSTAT PLOT
+Surr.cmap.Salinity.phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+Surr.cmap.Salinity.del_phy2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+Surr.cmap.Salinity.chl2$CCM1_PredictStat %>%
+  ggplot(aes(x=LibSize,y=rho,group=LibSize)) + 
+  geom_jitter() + stat_summary(fun = median,geom="line")
+
+# EMBED DIMENSION
+
+# EmbedDimension(dataFrame = ag_df_CR,Tp = 0, columns = "Salinity", target = "phy",lib="1 1174",pred="1 1174",tau=-7)
+
+# EmbedDimension(dataFrame = ag_df_CR,Tp = 0, columns = "Salinity", target = "del_phy",lib="1 1174",pred="1 1174",tau=-7)
+
+# EmbedDimension(dataFrame = ag_df_CR,Tp = 0, columns = "Salinity", target = "chl",lib="1 1174",pred="1 1174",tau=-7)
+
+# EmbedDimension(dataFrame = Surrogate,Tp = 0, columns = "Salinity", target = "phy",lib="1 1174",pred="1 1174",tau=-7)
+
+# EmbedDimension(dataFrame = Surrogate,Tp = 0, columns = "Salinity", target = "del_phy",lib="1 1174",pred="1 1174",tau=-7)
+
+# EmbedDimension(dataFrame = Surrogate,Tp = 0, columns = "Salinity", target = "chl",lib="1 1174",pred="1 1174",tau=-7)
+
+
+
+
+
+
+```
+
+
+#CHL, PHY DEL_PHY
+
+```{r}
+
+cmap.chl.phy <-CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "chl", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.chl.del_phy <-CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "chl", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+cmap.phy.del_phy <-CCM(dataFrame = ag_df_CR, E = 5, tau=-7, Tp = 0, columns = "phy", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.chl.phy <-CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "chl", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr,cmap.chl.del_phy <-CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "chl", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+Surr.cmap.phy.del_phy <-CCM(dataFrame = Surrogate, E = 5, tau=-7, Tp = 0, columns = "phy", target = "del_phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = FALSE, showPlot = TRUE) 
+
+# CMAP Correlations
+Celsius.phy.corr <- cor(cmap.Celsius.phy)
+Celsius.phy.corr <- Celsius.phy.corr[1, 3]
+
+chl.phy.corr <- cor(cmap.chl.phy)
+chl.phy.corr <- chl.phy.corr[1, 3]
+
+chl.del_phy.corr <- cor(cmap.chl.del_phy)
+chl.del_phy.corr <- chl.del_phy.corr[1, 3]
+
+phy.del_phy.corr <- cor(cmap.phy.del_phy)
+phy.del_phy.corr <- phy.del_phy.corr[1, 3]
+
+# Surrogate Correlations
+Surr.chl.phy.corr <- cor(Surr.cmap.chl.phy)
+Surr.chl.phy.corr <- Surr.chl.phy.corr[1, 3]
+
+Surr.chl.del_phy.corr <- cor(Surr.cmap.chl.del_phy)
+Surr.chl.del_phy.corr <- Surr.chl.del_phy.corr[1, 3]
+
+Surr.phy.del_phy.corr <- cor(Surr.cmap.phy.del_phy)
+Surr.phy.del_phy.corr <- Surr.phy.del_phy.corr[1, 3]
+
+# CMAP Plots
+# Celsius.phy
+plot(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,2], type = "l",
+     main = "Celsius V. phy", xlab = "LibSize", ylab = "Rho", col = "blue", ylim = c(0, 1))
+lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], col = "red")
+abline(h = Celsius.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# chl.phy
+plot(x = cmap.chl.phy[,1], y = cmap.chl.phy[,2], type = "l",
+     main = "chl V. phy", xlab = "LibSize", ylab = "Rho", col = "blue", ylim = c(0, 1))
+lines(x = cmap.chl.phy[,1], y = cmap.chl.phy[,3], col = "red")
+abline(h = chl.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.chl.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# chl.del_phy
+plot(x = cmap.chl.del_phy[,1], y = cmap.chl.del_phy[,2], type = "l",
+     main = "chl V. del_phy", xlab = "LibSize", ylab = "Rho", col = "blue", ylim = c(0, 1))
+lines(x = cmap.chl.del_phy[,1], y = cmap.chl.del_phy[,3], col = "red")
+abline(h = chl.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.chl.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# phy.del_phy
+plot(x = cmap.phy.del_phy[,1], y = cmap.phy.del_phy[,2], type = "l",
+     main = "phy V. del_phy", xlab = "LibSize", ylab = "Rho", col = "blue", ylim = c(0, 1))
+lines(x = cmap.phy.del_phy[,1], y = cmap.phy.del_phy[,3], col = "red")
+abline(h = phy.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(cmap.phy.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# Surrogate Plots
+# chl.phy
+plot(x = Surr.cmap.chl.phy[,1], y = Surr.cmap.chl.phy[,2], type = "l",
+     main = "chl V. phy (Surrogate)", xlab = "LibSize", ylab = "Rho", col = "blue", ylim = c(0, 1))
+lines(x = Surr.cmap.chl.phy[,1], y = Surr.cmap.chl.phy[,3], col = "red")
+abline(h = Surr.chl.phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.chl.phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# chl.del_phy
+plot(x = Surr.cmap.chl.del_phy[,1], y = Surr.cmap.chl.del_phy[,2], type = "l",
+     main = "chl V. del_phy (Surrogate)", xlab = "LibSize", ylab = "Rho", col = "blue", ylim = c(0, 1))
+lines(x = Surr.cmap.chl.del_phy[,1], y = Surr.cmap.chl.del_phy[,3], col = "red")
+abline(h = Surr.chl.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.chl.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+# phy.del_phy
+plot(x = Surr.cmap.phy.del_phy[,1], y = Surr.cmap.phy.del_phy[,2], type = "l",
+     main = "phy V. del_phy (Surrogate)", xlab = "LibSize", ylab = "Rho", col = "blue", ylim = c(0, 1))
+lines(x = Surr.cmap.phy.del_phy[,1], y = Surr.cmap.phy.del_phy[,3], col = "red")
+abline(h = Surr.phy.del_phy.corr, col = "green", lty = 2)
+legend("topright", legend = c(colnames(Surr.cmap.phy.del_phy)[2:3], "Correlation"), 
+       col = c("blue", "red", "green"), lty = c(1, 1, 2))
+
+#EMBED DIMENSION 
+
+#EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "Celsius",
+               #target = "phy", lib = "1 1174", pred = "1 1174",
+               #tau = -7)
+
+#EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "chl",
+               #target = "phy", lib = "1 1174", pred = "1 1174",
+               #tau = -7)
+
+#EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "chl",
+               #target = "del_phy", lib = "1 1174", pred = "1 1174",
+               #tau = -7)
+
+#EmbedDimension(dataFrame = ag_df_CR, Tp = 0, columns = "phy",
+               #target = "del_phy", lib = "1 1174", pred = "1 1174",
+               #tau = -7)
+
+#EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "chl",
+               #target = "phy", lib = "1 1174", pred = "1 1174",
+               #tau = -7)
+
+#EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "chl",
+               #target = "del_phy", lib = "1 1174", pred = "1 1174",
+               #tau = -7)
+
+#EmbedDimension(dataFrame = Surrogate, Tp = 0, columns = "phy",
+               #target = "del_phy", lib = "1 1174", pred = "1 1174",
+               #tau = -7)
+
+
+```
+
+
+#CCM MWRA Non-CSO
+
+***CR_bacteria***
+
+#Enteroccus
+
+```{r}
+
+cmap.Enteroccus.del_phy <- CCM(dataFrame = ag_CR_bacteria, E = 4, Tp = 4, columns = "Enteroccus", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.Enteroccus.phy <- CCM(dataFrame = ag_CR_bacteria, E = 4, Tp = 4, columns = "Enteroccus", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.Enteroccus.chl <- CCM(dataFrame = ag_CR_bacteria, E = 4, Tp = 4, columns = "Enteroccus", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+#Surrogates
+
+
+Surr.cmap.Enteroccus.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Enteroccus", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.Enteroccus.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Enteroccus", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.Enteroccus.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Enteroccus", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+
+```
+
+#E_coli
+
+```{r}
+
+
+cmap.E_coli.del_phy <- CCM(dataFrame = ag_CR_bacteria, E = 4, Tp = 4, columns = "E_coli", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.E_coli.phy <- CCM(dataFrame = ag_CR_bacteria, E = 4, Tp = 4, columns = "E_coli", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.E_coli.chl <- CCM(dataFrame = ag_CR_bacteria, E = 4, Tp = 4, columns = "E_coli", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+
+
+Surr.cmap.E_coli.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "E_coli", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.E_coli.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "E_coli", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.E_coli.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "E_coli", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+
+```
+
+***CR_Secchi***
+
+#Total Suspended Solids (mg/L)
+
+```{r}
+
+
+cmap.TSS.del_phy <- CCM(dataFrame = ag_CR_secchi, E = 4, Tp = 4, columns = "Total Suspended Solids (mg/L)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+cmap.TSS.phy <- CCM(dataFrame = ag_CR_secchi, E = 4, Tp = 4, columns = "Total Suspended Solids (mg/L)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.TSS.chl <- CCM(dataFrame = ag_CR_secchi, E = 4, Tp = 4, columns = "Total Suspended Solids (mg/L)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.TSS.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Total Suspended Solids (mg/L)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.TSS.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Total Suspended Solids (mg/L)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.TSS.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Total Suspended Solids (mg/L)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+```
+
+***CR_Nutrients***
+
+#Ammonium (uM)
+
+```{r}
+
+
+cmap.Ammonium.del_phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Ammonium (uM)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+cmap.Ammonium.phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Ammonium (uM)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.Ammonium.chl <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Ammonium (uM)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.Ammonium.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Ammonium (uM)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.Ammonium.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Ammonium (uM)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.Ammonium.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Ammonium (uM)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+```
+
+#"Nitrate+nitrite (uM)"
+
+```{r}
+
+
+cmap.nitrate_nitrite.del_phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Nitrate+nitrite (uM)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.nitrate_nitrite.phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Nitrate+nitrite (uM)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.nitrate_nitrite.chl <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Nitrate+nitrite (uM)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.nitrate_nitrite.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Nitrate+nitrite (uM)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.nitrate_nitrite.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Nitrate+nitrite (uM)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.nitrate_nitrite.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Nitrate+nitrite (uM)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+```
+
+#Phosphate (uM)
+
+```{r}
+
+
+cmap.phosphate.del_phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Phosphate (uM)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.phosphate.phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Phosphate (uM)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.phosphate.chl <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Phosphate (uM)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.phosphate.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Phosphate (uM)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.phosphate.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Phosphate (uM)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.phosphate.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Phosphate (uM)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+```
+
+#Total phosphorus (uM)
+
+```{r}
+
+
+cmap.phosphorus.del_phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Total phosphorus (uM)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.phosphorus.phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Total phosphorus (uM)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.phosphorus.chl <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Total phosphorus (uM)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.phosphorus.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Total phosphorus (uM)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.phosphorus.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Total phosphorus (uM)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.phosphorus.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Total phosphorus (uM)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+```
+
+#Phaeophytin
+
+#Total phosphorus (uM)
+
+```{r}
+
+
+cmap.Phaeophytin.del_phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Phaeophytin (ug/L)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.Phaeophytin.phy <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Phaeophytin (ug/L)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.Phaeophytin.chl <- CCM(dataFrame = ag_CR_nutrients, E = 4, Tp = 4, columns = "Phaeophytin (ug/L)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.Phaeophytin.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Phaeophytin (ug/L)", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.Phaeophytin.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Phaeophytin (ug/L)", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.Phaeophytin.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "Phaeophytin (ug/L)", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+```
+
+
+###CCM LOGAN
+
+#HourlyAltimeterSetting
+
+```{r}
+
+cmap.alt.del_phy < - CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyAltimeterSetting", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.alt.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 0, columns = "HourlyAltimeterSetting", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.alt.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 0, columns = "HourlyAltimeterSetting", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.alt.del_phy < - CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyAltimeterSetting", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.alt.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 0, columns = "HourlyAltimeterSetting", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.alt.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 0, columns = "HourlyAltimeterSetting", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+
+```
+
+#HourlyDryBulbTemperature
+
+```{r}
+
+cmap.drybulb.del_phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyDryBulbTemperature", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.drybulb.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyDryBulbTemperature", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.drybulb.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyDryBulbTemperature", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.drybulb.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyDryBulbTemperature", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.drybulb.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyDryBulbTemperature", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.drybulb.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyDryBulbTemperature", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+```
+
+#HourlyPrecipitation
+
+```{r}
+
+cmap.precip.del_phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyPrecipitation", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.precip.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyPrecipitation", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.precip.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyPrecipitation", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.precip.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyPrecipitation", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.precip.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyPrecipitation", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.precip.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyPrecipitation", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+```
+
+#HourlyRelativeHumidity
+
+```{r}
+
+cmap.humidity.del_phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyRelativeHumidity", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.humidity.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = " HourlyRelativeHumidity", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.humidity.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = " HourlyRelativeHumidity", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.humidity.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyRelativeHumidity", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.humidity.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = " HourlyRelativeHumidity", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.humidity.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = " HourlyRelativeHumidity", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+```
+
+#HourlyStationPressure
+
+```{r}
+
+cmap.station.del_phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyStationPressure", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.station.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyStationPressure", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.station.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyStationPressure", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.station.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyStationPressure", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.station.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyStationPressure", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.station.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyStationPressure", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+```
+
+#HourlyVisibility keep bc effect incident radiation
+
+```{r}
+
+cmap.visibility.del_phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyVisibility", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.visibility.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyVisibility", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.visibility.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyVisibility", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.visibility.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyVisibility", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+Surr.cmap.visibility.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyVisibility", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.visibility.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyVisibility", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+```
+
+#HourlyWindDirection - could be matter but direction of wind may not
+tell how wind is pushing around in charles around. Dan Li. Andy?
+
+```{r}
+
+cmap.wind_direction.del_phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindDirection", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+cmap.wind_direction.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindDirection", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.wind_direction.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindDirection", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.wind_direction.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindDirection", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.wind_direction.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindDirection", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.wind_direction.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindDirection", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+```
+
+#HourlyWindGustSpeed
+
+```{r}
+
+cmap.wind_gust.del_phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindGustSpeed", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.wind_gust.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindGustSpeed", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.wind_gust.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindGustSpeed", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.wind_gust.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindGustSpeed", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.wind_gust.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindGustSpeed", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.wind_gust.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindGustSpeed", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+
+#Correlations 
+
+windspeed.phy.corr <- cor(cmap.windspeed.phy)[1, 3]
+windspeed.del_phy.corr <- cor(cmap.windspeed.del_phy)[1, 3]
+windspeed.chl.corr <- cor(cmap.windspeed.chl)[1, 3]
+
+#Surrogate Correlations
+
+Surr.windspeed.phy.corr <- cor(Surr.cmap.windspeed.phy)[1, 3]
+Surr.windspeed.del_phy.corr <- cor(Surr.cmap.windspeed.del_phy)[1, 3]
+Surr.windspeed.chl.corr <- cor(Surr.cmap.windspeed.chl)[1, 3]
+
+
+```
+
+#HourlyWindSpeed - synioptic variable
+
+```{r}
+
+cmap.windspeed.del_phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindSpeed", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.windspeed.phy <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindSpeed", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+cmap.windspeed.chl <- CCM(dataFrame = ag_Logan, E = 4, Tp = 4, columns = "HourlyWindSpeed", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+#SURROGATE
+
+Surr.cmap.windspeed.del_phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindSpeed", target = "del_phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.windspeed.phy <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindSpeed", target = "phy", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+Surr.cmap.windspeed.chl <- CCM(dataFrame = Surrogate, E = 4, Tp = 4, columns = "HourlyWindSpeed", target = "chl", libSizes = "20 200 10", sample = 100, showPlot = TRUE)
+
+#Correlations 
+
+windspeed.phy.corr <- cor(cmap.windspeed.phy)[1, 3]
+windspeed.del_phy.corr <- cor(cmap.windspeed.del_phy)[1, 3]
+windspeed.chl.corr <- cor(cmap.windspeed.chl)[1, 3]
+
+#Surrogate Correlations
+
+Surr.windspeed.phy.corr <- cor(Surr.cmap.windspeed.phy)[1, 3]
+Surr.windspeed.del_phy.corr <- cor(Surr.cmap.windspeed.del_phy)[1, 3]
+Surr.windspeed.chl.corr <- cor(Surr.cmap.windspeed.chl)[1, 3]
+
+
+
+
+```
+<<<<<<< HEAD
+
+
+
+test
+
+=======
+>>>>>>> 1b367f0d92bfabd71c8398c0a0a96824938af8ee
