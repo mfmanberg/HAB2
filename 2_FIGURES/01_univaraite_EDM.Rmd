@@ -711,3 +711,6 @@ rho_theta_tau_i %>%
   labs(title=paste0("Simplex with tau = ",tau_i))
 
 ```
+
+
+

@@ -1,0 +1,235 @@
+---
+title: "00.1_Cyano"
+output: html_document
+date: "2025-04-15"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(googlesheets4)
+library(tidyverse)
+library(padr)
+```
+
+### CYANO - EPA
+
+```{r}
+
+CyanoEPA2015.1 <- read_sheet('https://docs.google.com/spreadsheets/d/1YjTl7x6zHcui_U961o0Kez5URcWhF2uYE6QHGnK1Sy0/edit?usp=sharing')
+
+
+CyanoEPA2015.2 <- read_sheet('https://docs.google.com/spreadsheets/d/1nE4dxDyJYQCrRyeFfUY9ogNmjagzCA8mHnZlUCm5DxY/edit?usp=sharing')
+
+
+CyanoEPA2016 <- read_sheet('https://docs.google.com/spreadsheets/d/1va3luWGR-wbgF6peO5kFiGG3Eg9Fleo2bu3edjQmR_s/edit?usp=sharing')
+
+
+CyanoEPA2017 <- read_sheet('https://docs.google.com/spreadsheets/d/100ac4ZqGQpqpvcEuHzxfOX97lCt4lGz_eGdpo3K0vfU/edit?usp=sharing')
+
+
+CyanoEPA2019 <- read_sheet('https://docs.google.com/spreadsheets/d/1RJ_FSBPtUrrxPRLI1G8IDwtaHq3jyrfoXuDTLBJr8Kg/edit?usp=sharing')
+
+CyanoEPA2021 <- read_sheet('https://docs.google.com/spreadsheets/d/1B3Aeg-TlOdLnrAinK7D2KTKvTCtiM2KRMK9Tx8wYz3Q/edit?usp=sharing')
+
+
+CyanoEPA2022 <- read_sheet('https://docs.google.com/spreadsheets/d/1q7xMi6thpArfeoH-xV3QAPg2_7nhTatp3BZ6cb8g4NQ/edit?usp=sharing')
+
+CyanoEPA2015.1 <- CyanoEPA2015.1[, c("Site_ID", "Date", "Cyanobacteria (cells/mL)")]
+CyanoEPA2015.2  <- CyanoEPA2015.2[, c("Site_ID", "Date", "Cyanobacteria (cells/mL)")]
+CyanoEPA2016 <- CyanoEPA2016[, c("Site_ID", "Date", "Cyanobacteria (cells/mL)")]
+CyanoEPA2017 <- CyanoEPA2017[, c("Site_ID", "Date", "Cyanobacteria (cells/mL)")]
+CyanoEPA2019 <- CyanoEPA2019[, c("Site_ID", "Date", "Cyanobacteria (cells/mL)")]
+CyanoEPA2021 <- CyanoEPA2021[, c("Site_ID", "Date", "Cyanobacteria (cells/mL)")]
+CyanoEPA2022 <- CyanoEPA2022[, c("Site_ID", "Date", "Cyanobacteria (cells/mL)")]
+  
+CyanoEPA2015.1$Date  <- as.Date(CyanoEPA2015.1$Date, format = "%m/%d/%Y")
+CyanoEPA2015.2$Date <- as.Date(CyanoEPA2015.2$Date, format = "%m/%d/%Y")
+CyanoEPA2016$Date  <- as.Date(CyanoEPA2016$Date, format = "%m/%d/%Y")
+CyanoEPA2017$Date <- as.Date(CyanoEPA2017$Date, format = "%m/%d/%Y")
+CyanoEPA2019$Date <- as.Date(CyanoEPA2019$Date, format = "%m/%d/%Y")
+CyanoEPA2021$Date <- as.Date(CyanoEPA2021$Date, format = "%m/%d/%Y")
+CyanoEPA2022$Date <- as.Date(CyanoEPA2022$Date, format = "%m/%d/%Y")
+
+
+
+```
+
+
+### CYANO - MAX 
+
+```{r}
+
+MaxPaper20152019 <-  read_sheet('https://docs.google.com/spreadsheets/d/1K0FwgETetaCSKT7jng0CzTzppFn3p7Q3QiKy8oqbZnc/edit?usp=sharing')
+
+MaxPaper20152019 <- MaxPaper20152019[, c("Site_ID", "Date", "Cyanobacteria (cells/mL)")]
+
+# Columns to exclude from conversion
+exclude_cols <- c("Date", "Site_ID")
+
+MaxPaper20152019 <- MaxPaper20152019 %>%
+  mutate_at(vars(-one_of(exclude_cols)), ~ as.numeric(as.character(.)))
+
+
+
+MaxPaper20152019$Date  <- as.Date(MaxPaper20152019$Date, format = "%m/%d/%Y")
+
+
+
+```
+
+
+
+#Combine Cyano
+
+
+
+```{r}
+
+All.Cyano <- bind_rows(MaxPaper20152019,
+                       CyanoEPA2015.1,     
+                  CyanoEPA2015.1 ,
+CyanoEPA2015.2 ,
+CyanoEPA2016 , 
+CyanoEPA2017 ,
+CyanoEPA2019,
+CyanoEPA2021 ,
+CyanoEPA2022
+                       )
+                       
+All.Cyano <-    na.omit(All.Cyano)  
+
+
+All.Cyano$date <- All.Cyano$Date
+All.Cyano$Date <- NULL
+
+
+
+All.Cyano2 <- All.Cyano %>%
+  group_by(date) %>%
+  summarise(`Cyanobacteria (cells/mL)` = mean(`Cyanobacteria (cells/mL)`, na.rm = TRUE))
+
+All.Cyano2 <- All.Cyano2[-1, ]
+
+
+cyano_ag_df_CR <- merge(ag_df_CR, All.Cyano2, by = "date", all = TRUE)
+
+
+
+```
+
+#Scale 
+```{r}
+
+y_min <- min(c(cyano_ag_df_CR$phy, cyano_ag_df_CR$`Cyanobacteria (cells/mL)`), na.rm = TRUE)
+y_max <- max(c(cyano_ag_df_CR$phy, cyano_ag_df_CR$`Cyanobacteria (cells/mL)`), na.rm = TRUE)
+
+
+
+
+range(cyano_ag_df_CR$`Cyanobacteria (cells/mL)`, na.rm = TRUE)
+range(cyano_ag_df_CR$phy, na.rm = TRUE)
+
+# Get the range of both variables
+phy_range <- range(cyano_ag_df_CR$phy, na.rm = TRUE)
+cyano_range <- range(cyano_ag_df_CR$`Cyanobacteria (cells/mL)`, na.rm = TRUE)
+
+# Scale the 'phy' values to match the range of 'Cyanobacteria (cells/mL)': Min-max scaling
+scaled_phy <- (cyano_ag_df_CR$phy - phy_range[1]) / (phy_range[2] - phy_range[1]) * (cyano_range[2] - cyano_range[1]) + cyano_range[1]
+
+# Add the scaled 'phy' values to the data frame (optional)
+cyano_ag_df_CR$scaled_phy <- scaled_phy
+
+# Check the new scaled values
+range(cyano_ag_df_CR$scaled_phy, na.rm = TRUE)
+
+```
+
+# Plot
+```{r}
+
+cyano_ag_df_CR <- cyano_ag_df_CR %>% pad()
+
+plot(x = cyano_ag_df_CR$date, 
+     y = cyano_ag_df_CR$scaled_phy,
+     xlab = "Date", ylab = "Scaled Phycocanin (RFU)", main = "Scaled Phy V. Cyano",
+     type = "n") 
+   #  ylim = c(y_min, y_max))  
+
+points(cyano_ag_df_CR$date, cyano_ag_df_CR$`Cyanobacteria (cells/mL)`, 
+       col = "darkgreen", pch = 16)
+
+lines(cyano_ag_df_CR$date, cyano_ag_df_CR$scaled_phy, 
+      col = "orange", lwd = 2)
+abline(h = (scaled_bloomthreshold), col = "green", lty = 2)
+legend("topright", legend = c("Scaled Phy", "Cyanobacteria (cells/mL)", 
+                              "Phyocanin Bloom Threshold"), 
+      col = c("orange", "darkgreen","lightgreen"), lty = c(1, 1, 2))
+
+
+
+
+
+cyano_ag_df_CR <- cyano_ag_df_CR %>%
+  filter(!is.na(phy))  # Remove rows where 'phy' is NA
+
+
+#	2015-11-05
+#2017-05-10
+
+
+
+
+#       
+# cmap.ph.phy.plot <- plot(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], type = "l",
+#      main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+# lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], col = "red")
+# lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,2], col = "blue")
+# abline(h = (abs(ph.phy.corr)), col = "green", lty = 2)
+# abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+# legend("topright", legend = c(colnames(cmap.ph.phy)[2:3], "Correlation", 
+#                               "Critical Correlation"), 
+#        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+# 
+```
+
+
+#convert cyano to phy 
+```{r}
+lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy)
+
+summary(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
+
+#Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)          -13133      13002  -1.010    0.315    
+#cyano_ag_df_CR$phy    69560      10003   6.954 2.06e-10 ***
+
+ #20000 cells per ml = bloom
+
+bloomthresholdphy = 20000 /   69560  #phy threshold for bloom
+print(bloomthreshold)
+
+
+# Scale it using the same min-max formula:
+scaled_bloomthreshold <- (bloomthreshold - phy_range[1]) / (phy_range[2] - phy_range[1]) * 
+                         (cyano_range[2] - cyano_range[1]) + cyano_range[1]
+
+print(scaled_bloomthreshold)
+
+#linear regression
+  
+  plot(cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy)
+  abline(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
+
+  
+  
+  
+  
+```
+
+
+
+
+
+
+

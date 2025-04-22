@@ -24,38 +24,83 @@ library(tidyverse)
 
 #Option 1: highlighting nonlinearity test in-sample 
 
-1 week:
+## Univar 
 
 ```{r}
-#SMAP - No exclusion radius 
+
+#SETTINGS 
 
 tau_i <- 7
 
 lib_ins <- c(1,1014) # data up through end of 2022; this is the training set
 lib_oos <- c(1025,1189) # leave this alone until we're nearly done with the project
 
+
+#SELECT E
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
+
+
+#SELECT THETA
 rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "phy",
                                     E=3,
                                     tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
-                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, 
+#PREDICT 
+
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=3,theta=8) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+Univar <- data.frame(
+  phy = preds_AR$predictions$Predictions,
+  date = preds_AR$predictions$date
+)
 
 
 ```
 
+
+
+## Multivar 
+
 ```{r}
 
-rho_theta_tau_i #1) univar S-map
+
+#SELECT E
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+
 
 #2) multi w/ all var
 
 columns_i <- c( "chl" ,     "phy"   ,   "ph"   ,    "Celsius" , "spcond" ,  "do" ,      "turb"  ,   "Salinity" , "sin_season")
 
-multivar <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i , target = "phy",
+rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i , target = "phy",
                                     E=3,
                                     tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
                                     lib = lib_ins, pred = lib_ins, showPlot = TRUE, embedded = TRUE) #lib train, #pred is pred 
 
  
+
+
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+lib = lib_ins, pred = lib_ins, E=3,theta=8) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+Multivar <- data.frame(
+  phy = preds_AR$predictions$Predictions,
+  date = preds_AR$predictions$date
+)
+
+
     if(file.exists("Multi_E3_D5.rds")) {
   # Load the file if it exists
   multivar <- readRDS("multivar.rds")
@@ -63,7 +108,6 @@ multivar <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i , target 
   # Save to file
   saveRDS(multivar, "multivar.rds") }
 
-    
     
     
     
@@ -204,6 +248,16 @@ if(file.exists("Multi_E3_D5.rds")) {
 
 
 
+
+   Multi_E3_D5_obs <- Multiview(dataFrame = ag_df_CR, lib = "1 1014", pred = "1 1014", E =3, D=5,
+                            columns = "chl phy ph Celsius spcond do turb Salinity sin_season", target = "phy")
+   
+     Multi_E3_D5_pred <- Multiview(dataFrame = ag_df_CR, lib = "1 1014", pred = "1 1189", E =3, D=5,
+                            columns = "chl phy ph Celsius spcond do turb Salinity sin_season", target = "phy")
+                                
+
+     
+     
 #**E2 D3 IN SAMPLE**
 
 Multi_E2_D3 <- "Multi_E2_D3.rds"
@@ -223,15 +277,64 @@ head(Multi_E2_D3)
   
 head(Multi_E3_D5)
   
-  
 
 ```
 
 
 
+#Option B:  time series of predicted and observed
+
+```{r}
+
+
+library(ggplot2)
+
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+ag_df_CR_obs <- ag_df_CR[ag_df_CR$date > as.Date("2022-12-31"), ]
+
+plot( x = ag_df_CR_obs$date, y = ag_df_CR_obs$phy)
+
+
+# Plot observed phycocyanin
+pred_v_obs <- plot(x = ag_df_CR_obs$date, 
+     y = ag_df_CR_obs$phy, 
+     type = "l", 
+     col = "orange", 
+     main = "Predicted V. Observed Phycocanin", 
+     xlab = "Date", 
+     ylab = "Phycocanin (RFU)")
+
+# Add legend
+legend("topright", 
+       legend = "Phycocanin (RFU)", 
+       col = "orange", 
+       lty = 1)
+
+
+
+# 
+# cmap.ph.phy.plot <- plot(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], type = "l",
+#      main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
+# lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], col = "red")
+# lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,2], col = "blue")
+# abline(h = (abs(ph.phy.corr)), col = "green", lty = 2)
+# abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+# legend("topright", legend = c(colnames(cmap.ph.phy)[2:3], "Correlation", 
+#                               "Critical Correlation"), 
+#        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+# 
+
+
+
+
+```
 
 
 #END
+
+
+
 
 
 

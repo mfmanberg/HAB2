@@ -246,13 +246,17 @@ MaxPaper20152019_subset$Date <- as.Date(MaxPaper20152019_subset$Date)
 MDPH_subset$Date <- as.Date(MDPH_subset$Date)
 MDPH2020_subset$Date <- as.Date(MDPH2020_subset$Date)
 MDPH2022_subset$Date <- as.Date(MDPH2022_subset$Date)
-CyanoEPA2015.1_subset$Date <- as.Date(CyanoEPA2015.1_subset$Date, format = "%m/%d/%Y")
-CyanoEPA2015.2_subset$Date <- as.Date(CyanoEPA2015.2_subset$Date, format = "%m/%d/%Y")
-CyanoEPA2016_subset$Date <- as.Date(CyanoEPA2016_subset$Date, format = "%m/%d/%Y")
-CyanoEPA2017_subset$Date <- as.Date(CyanoEPA2017_subset$Date, format = "%m/%d/%Y")
-CyanoEPA2019_subset$Date <- as.Date(CyanoEPA2019_subset$Date, format = "%m/%d/%Y")
-CyanoEPA2021_subset$Date <- as.Date(CyanoEPA2021_subset$Date, format = "%m/%d/%Y")
-CyanoEPA2022_subset$Date <- as.Date(CyanoEPA2022_subset$Date, format = "%m/%d/%Y")
+
+
+
+
+CyanoEPA2015.1_subset$Date <- as.Date(CyanoEPA2015.1$Date, format = "%m/%d/%Y")
+CyanoEPA2015.2_subset$Date <- as.Date(CyanoEPA2015.2$Date, format = "%m/%d/%Y")
+CyanoEPA2016_subset$Date <- as.Date(CyanoEPA2016$Date, format = "%m/%d/%Y")
+CyanoEPA2017_subset$Date <- as.Date(CyanoEPA2017$Date, format = "%m/%d/%Y")
+CyanoEPA2019_subset$Date <- as.Date(CyanoEPA2019$Date, format = "%m/%d/%Y")
+CyanoEPA2021_subset$Date <- as.Date(CyanoEPA2021$Date, format = "%m/%d/%Y")
+CyanoEPA2022_subset$Date <- as.Date(CyanoEPA2022$Date, format = "%m/%d/%Y")
 
 All.Cyano <- bind_rows(MaxPaper20152019_subset, MDPH_subset, MDPH2020_subset, MDPH2022_subset, CyanoEPA2015.1_subset, CyanoEPA2015.2_subset, CyanoEPA2016_subset, CyanoEPA2017_subset, CyanoEPA2019_subset,  CyanoEPA2021_subset, CyanoEPA2022_subset )
 

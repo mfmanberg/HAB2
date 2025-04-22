@@ -3,7 +3,7 @@ title: "figures_and_tables"
 output: html_document
 date: "2024-04-03"
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
   markdown: 
     wrap: 72
 ---
@@ -20,6 +20,7 @@ library(ggplot2)
 library(zoo)
 library(quantreg)
 library(dplyr)
+library(forecast)
 #test
 
 ```
@@ -131,9 +132,288 @@ results_df$Significance <- ifelse(
 print(results_df)
 
 
+```
+
+#ARIMA
+
+#ARIMA 9-12 CHL
+
+```{r}
+morndf_CR <- morndf_CR %>% pad()
+
+class(morndf_CR )
+morndf_CR$chl <- as.numeric(morndf_CR$chl)
+
+#plot(ag_morndf_CR$date, ag_morndf$chl) 
+
+#Fit Dataset
+rate <- ts(morndf_CR [,'chl'],start = c(2015,5), frequency = 365 )
+#Tell the gaps and days 
+
+
+#Grab Data
+autoplot(rate) + ggtitle ("Autoplot - Non-Aggregated ") + ylab("Chlorophyll (RFU)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#Build ARIMA Model - include seasonal autoregressive and seasonal autoregressive moving averages.
+fit_ARIMA_morndf_CR_chl <-auto.arima(rate, seasonal = TRUE)
+print(summary(fit_ARIMA_morndf_CR_chl))
+checkresiduals(fit_ARIMA_morndf_CR_chl)
+
+
+#Forecast
+fcast <- forecast(fit_ARIMA_morndf_CR_chl, h =365) #h = amount of periods ahead
+autoplot
+plot(fcast)
+print(summary(fcast))
+
+#Fitting an auto.arima model in R using the Forecast package
+#fit_basic1<- auto.arima(morndf_CR,xreg=trainREG_TS)
+#forecast_1<-forecast(fit_basic1,xreg = testREG_TS)
+
+ARIMA_morndf_chl <- saveRDS(fcast, file = "ARIMA_morndf_chl")
+
+```
+
+
+#ARIMA 9-12 PHY
+
+```{r}
+morndf_CR <- morndf_CR %>% pad()
+
+class(morndf_CR )
+morndf_CR$phy <- as.numeric(morndf_CR$phy)
+
+#plot(ag_morndf_CR$date, ag_morndf_CR$chl) 
+
+#Fit Dataset
+rate <- ts(morndf_CR [,'phy'],start = c(2015,5), frequency = 365 )
+#Tell the gaps and days 
+
+
+#Grab Data
+autoplot(rate) + ggtitle ("Autoplot - Non-Aggregated ") + ylab("Phycocanin (RFU)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#Build ARIMA Model - include seasonal autoregressive and seasonal autoregressive moving averages.
+fit_ARIMA_morndf_phy <-auto.arima(rate, seasonal = TRUE)
+print(summary(fit_ARIMA_morndf_phy))
+checkresiduals(fit_ARIMA_morndf_phy)
+
+
+#Forecast
+fcast <- forecast(fit_ARIMA_morndf_phy, h =365) #h = amount of periods ahead
+autoplot
+plot(fcast)
+print(summary(fcast))
+
+#Fitting an auto.arima model in R using the Forecast package
+#fit_basic1<- auto.arima(morndf_CR,xreg=trainREG_TS)
+#forecast_1<-forecast(fit_basic1,xreg = testREG_TS)
+
+ARIMA_morndf_phy <- saveRDS(fcast, file = "ARIMA_morndf_phy")
 
 
 ```
+
+
+## ARIMA Non-Aggregated CHL
+
+```{r}
+df_CR <- df_CR %>% pad()
+
+class(df_CR )
+df_CR $chl <- as.numeric(df_CR$chl)
+
+#plot(ag_df_CR$date, ag_df_CR$chl) 
+
+#Fit Dataset
+rate <- ts(df_CR [,'chl'],start = c(2015,5), frequency = 365 )
+#Tell the gaps and days 
+
+
+#Grab Data
+autoplot(rate) + ggtitle ("Autoplot - Non-Aggregated ") + ylab("Chlorophyll (RFU)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#Build ARIMA Model - include seasonal autoregressive and seasonal autoregressive moving averages.
+fit_ARIMA_df_chl <-auto.arima(rate, seasonal = TRUE)
+print(summary(fit_ARIMA_df_chl))
+checkresiduals(fit_ARIMA_df_chl)
+
+
+#Forecast
+fcast <- forecast(fit_ARIMA_df_chl, h =365) #h = amount of periods ahead
+autoplot
+plot(fcast)
+print(summary(fcast))
+
+#Fitting an auto.arima model in R using the Forecast package
+#fit_basic1<- auto.arima(df_CR,xreg=trainREG_TS)
+#forecast_1<-forecast(fit_basic1,xreg = testREG_TS)
+
+ARIMA_df_chl <- saveRDS(fcast, file = "ARIMA_df_chl")
+
+
+```
+
+## ARIMA Non-Aggregated PHY
+
+
+```{r}
+df_CR <- df_CR %>% pad()
+
+class(df_CR )
+df_CR $phy <- as.numeric(df_CR$phy)
+
+#plot(ag_df_CR$date, ag_df_CR$chl) 
+
+#Fit Dataset
+rate <- ts(df_CR [,'phy'],start = c(2015,5), frequency = 365 )
+#Tell the gaps and days 
+
+
+#Grab Data
+autoplot(rate) + ggtitle ("Autoplot - Non-Aggregated ") + ylab("Phycocanin (RFU)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#Build ARIMA Model - include seasonal autoregressive and seasonal autoregressive moving averages.
+fit_ARIMA_df_phy <-auto.arima(rate, seasonal = TRUE)
+print(summary(fit_ARIMA_df_phy))
+checkresiduals(fit_ARIMA_df_phy)
+
+
+#Forecast
+fcast <- forecast(fit_ARIMA_df_phy, h =365) #h = amount of periods ahead
+autoplot
+plot(fcast)
+print(summary(fcast))
+
+
+ARIMA_df_phy <- saveRDS(fcast, file = "ARIMA_df_phy")
+
+
+```
+
+## ARIMA Aggreggated Daily CHL
+
+```{r}
+ag_df_CR <- ag_df_CR  %>% pad()
+ag_df_CR$phy <- as.numeric(ag_df_CR$phy)
+
+
+class(ag_df_CR)
+ag_df_CR$chl <- as.numeric(ag_df_CR$chl)
+
+##CHL
+
+
+#Fit Dataset
+rate <- ts(ag_df_CR[,'chl'],start = c(2015,5), frequency = 365 )
+#Tell the gaps and days 
+
+
+
+#Grab Data
+autoplot(rate) + ggtitle ("Autoplot - Daily Aggregate ") + ylab("Chlorophyll (RFU)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+#Build ARIMA Model - include seasonal autoregressive and seasonal autoregressive moving averages.
+fit_ARIMA_ag_chl <-auto.arima(rate, seasonal = TRUE)
+print(summary(fit_ARIMA_ag_chl))
+checkresiduals(fit_ARIMA_ag_chl)
+
+
+#Forecast
+fcast <- forecast(fit_ARIMA_ag_chl, h =365) #h = amount of periods ahead
+autoplot
+plot(fcast)
+print(summary(fcast))
+
+#Fitting an auto.arima model in R using the Forecast package
+#fit_basic1<- auto.arima(df_CR,xreg=trainREG_TS)
+#forecast_1<-forecast(fit_basic1,xreg = testREG_TS)
+
+ARIMA_ag_df_phy <- saveRDS(fcast, file = "ARIMA_ag_df_chl")
+
+
+#fcast$mean
+
+ARIMA_ag_df_phy_pred <- data.frame(fcast$mean)
+print(ARIMA_ag_df_phy_pred)
+
+
+colnames(ARIMA_ag_df_phy_pred) <- "forecast_phy"
+
+# Create date sequence starting from the 172nd day of 2023
+start_date <- as.Date("2023-01-01") + 171  # 172nd day = 171 days after Jan 1
+num_days <- nrow(ARIMA_ag_df_phy_pred)
+
+ARIMA_ag_df_phy_pred$date <- seq(from = start_date, by = "day", length.out = num_days)
+
+# Print result
+print(ARIMA_ag_df_phy_pred)
+
+all_ARIMA_ag_df_phy_pred <- left_join(ag_df_CR, ARIMA_ag_df_phy_pred, by = "date")
+
+all_ARIMA_ag_df_phy_pred <- na.omit(all_ARIMA_ag_df_phy_pred)
+
+ARIMA_ag_df_phy_pred_results <- ComputeError(all_ARIMA_ag_df_phy_pred$phy, all_ARIMA_ag_df_phy_pred$forecast_phy )
+
+ARIMA_ag_df_phy_pred_results$rho
+
+```
+
+## ARIMA Aggreggated Daily PHY
+```{r}
+
+##PHY
+
+ag_df_CR <- ag_df_CR  %>% pad()
+ag_df_CR$phy <- as.numeric(ag_df_CR$phy)
+
+
+#Fit Dataset
+rate <- ts(ag_df_CR[,'phy'],start = c(2015,5), frequency = 365 )
+#Tell the gaps and days 
+
+
+
+#Grab Data
+autoplot(rate) + ggtitle ("ARIMA - Daily Aggregate ") + ylab("Phycocanin (RFU)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#Build ARIMA Model - include seasonal autoregressive and seasonal autoregressive moving averages.
+fit_ARIMA_ag_phy <-auto.arima(rate, seasonal = TRUE)
+print(summary(fit_ARIMA_ag_phy))
+checkresiduals(fit_ARIMA_ag_phy)
+
+
+#Forecast
+fcast <- forecast(fit_ARIMA_ag_phy, h =365) #h = amount of periods ahead
+autoplot
+plot(fcast)
+print(summary(fcast))
+
+#Fitting an auto.arima model in R using the Forecast package
+#fit_basic1<- auto.arima(df_CR,xreg=trainREG_TS)
+#forecast_1<-forecast(fit_basic1,xreg = testREG_TS)
+
+
+ARIMA_ag_df_phy <- saveRDS(fcast, file = "ARIMA_ag_df_phy")
+
+
+fcast
+
+```
+
+
+
 
 #Export 
 ```{r}
@@ -162,3 +442,16 @@ dev.off()
 
 
 ```
+
+#Histogram
+
+```{r}
+ARIMA_ag_df_phy_pred_results$rho
+
+
+
+
+
+
+```
+
