@@ -10,12 +10,56 @@ editor_options:
     wrap: 72
 ---
 
+```{r}
+
+ag_df_CR <- readRDS("C:/Users/Matt hamburbur/Desktop/HAB2/HAB2/1_LIB/ag_df_CR.rds")
+
+library(rEDM)
+library(tidyverse)
+
+```
+
+
 #Surr functions
+```{r}
+
+
+make_yday_surrogate <- function(yday,ts,bw=28,num_surr=1){
+  
+  # ksmooth(df_ph$yday,df_ph$ph,bandwidth=28,x.points=120:320,kernel="normal") 
+  
+  if (any(!is.finite(ts))) {
+    stop("SurrogateData(): input time series contained invalid values")
+  }
+  n = length(ts)
+  
+  seasonal_cyc = map_dbl(yday,\(yday_i) ksmooth(yday,ts,bandwidth=bw,x.points=yday_i)$y)
+  seasonal_resid = ts - seasonal_cyc
+  
+  # randomize the temporal sequence of residuals and add them back to the cycle.
+  
+  return(sapply(1:num_surr, function(i) {
+    seasonal_cyc + sample(seasonal_resid, n)
+  }))
+  
+  
+}
+
+
+
+
+```
 
 
 ```{r}
+<<<<<<< HEAD
 do_1_xmap <- function(dataFrame, E, tau, Tp, lib=NULL, pred=NULL, columns, target, sample, exclusionRadius, random = FALSE, showPlot = FALSE, ...) {
 # do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, sample, exclusionRadius, random = FALSE, showPlot = FALSE) {
+=======
+
+
+do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, sample, exclusionRadius, random = FALSE, showPlot = FALSE) { 
+>>>>>>> 328e7d3459f1efbfe53dcc24ff0cbe265ef34149
   if(is.null(lib)){
     lib <- paste("1",nrow(dataFrame))
     pred <- lib
@@ -82,10 +126,17 @@ do_1_surr_xmap <- function(dataFrame, E, tau, Tp=0, columns, target, lib=NULL, p
   dataFrame_i <- dataFrame
   dataFrame_i[,target] <- make_yday_surrogate(dataFrame[,yday_col],dataFrame[,target])
   
+<<<<<<< HEAD
   xmap_stats <- do_1_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target, 
                         lib=lib, pred=pred, exclusionRadius=exclusionRadius)
+=======
+  xmap_stats <- do_1_surr_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target, 
+                        lib=lib, pred=pred, exclusionRadius=exclusionRadius, yday_col = "yday")   #function correct??
+>>>>>>> 328e7d3459f1efbfe53dcc24ff0cbe265ef34149
   
 }
+
+#do_1_xmap?
 
 
 ```
@@ -96,14 +147,21 @@ do_1_surr_xmap <- function(dataFrame, E, tau, Tp=0, columns, target, lib=NULL, p
 
 ```{r}
 
+<<<<<<< HEAD
 dataFrame <- readRDS("C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\1_LIB\\ag_df_CR.rds") %>%
+=======
+dataFrame <- ag_df_CR %>%
+>>>>>>> 328e7d3459f1efbfe53dcc24ff0cbe265ef34149
   mutate(yday = yday(date)) %>%
   select(yday, everything())
 
 dataFrame <- dataFrame[, -c(2)]
 
+<<<<<<< HEAD
 tau_i <- 7
 
+=======
+>>>>>>> 328e7d3459f1efbfe53dcc24ff0cbe265ef34149
  #filename <- file.choose()
  #print(filename)
 
@@ -111,7 +169,8 @@ tau_i <- 7
 ```
 
 
-#   N = , ag_df_CR
+
+#   N = 1,  ag_df_CR
 
 ```{r}
 
@@ -122,7 +181,7 @@ tau_i <- 7
 
 tau_i <- 7
 n_surr <- 1 #1
-v_test_var <- c("ph","Celsius","spcond","do","turb","Salinity")
+v_test_var <- c("ph","Celsius","spcond","do","turb","Salinity", "sin_season")
 
 results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
@@ -136,6 +195,9 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
       target= target_i,
       exclusionRadius = tau_i) #do_1_surr_ccm
     
+
+    temp <-  do_1_surr_ccm(dataFrame,E=6,tau=tau_i,Tp=0,columns="phy",target = "ph", 
+                           exclusionRadius = tau_i) 
     temp$index = index
     return(temp)
     })
@@ -149,23 +211,29 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
 
 
 
-if (file.exists("result_i_1.rds")) {
-  # If it's saved locally, load the data
-  result_i_1 <- readRDS("result_i_1.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-result_i_1 <- result_i 
-  saveRDS(result_i_1, "result_i_1.rds")
-}
 
 
 ```
 
+<<<<<<< HEAD
 #   Run cross-map at max library size for the REAL covariates.
+=======
+>>>>>>> 328e7d3459f1efbfe53dcc24ff0cbe265ef34149
 
 ```{r}
 
+# surrccm_phyph_n1 <- results_surr_xmap
+# 
+# if (file.exists("surrccm_phyph_n1.rds")) {
+#   # If it's saved locally, load the data
+#   surrccm_phyph_n1 <- readRDS("surrccm_phyph_n1.rds")
+# } else {
+#   # If it's not saved locally, read it from Google Sheets and save it locally
+# surrccm_phyph_1 <- surrccm_phyph_n1
+#   saveRDS(surrccm_phyph_n1, "surrccm_phyph_n1.rds")
+# }
 
+<<<<<<< HEAD
 #change surrogate to regular
 #run regular calc 1 time (no loop)
 #estimmated p value is fraction of surrogates that beat rho max 
@@ -203,28 +271,29 @@ surrccm_phyph_1 <- surrccm_phyph_n1
 
 
 library(gridExtra)
+=======
+# 
+# 
+ library(gridExtra)
+>>>>>>> 328e7d3459f1efbfe53dcc24ff0cbe265ef34149
 library(grid)
-
-# Define output file path
-output_file <- "surrccm_phyph_1.png"
-
-# Open PNG graphics device
-png(output_file, width = 1200, height = 600, res = 150)  # Adjust size & resolution
-
-# Create table and plot
-grid.newpage()
-grid.table(results_df)
-
-# Close the graphics device
-dev.off()
-
-
-
-
-
-
+# 
+# # Define output file path
+output_file <- "results_surr_xmap"
+# 
+# # Open PNG graphics device
+ png(output_file, width = 1200, height = 600, res = 150)  # Adjust size & resolution
+# 
+# # Create table and plot
+ grid.newpage()
+ grid.table(results_df)
+# 
+# # Close the graphics device
+ dev.off()
+# 
 
 ```
+
 
 #   N = 500
 
@@ -234,7 +303,7 @@ dev.off()
 
 tau_i <- 7
 n_surr <-  500 #1
-v_test_var <- c("pH","Celsius","spcond","do","turb","Salinity")
+v_test_var <- c("pH","Celsius","spcond","do","turb","Salinity", "sin_season")
 
 
 results_surr_xmap <- map_dfr(v_test_var,\(target_i){
@@ -253,6 +322,16 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
 })
 
 
+
+
+
+```
+
+
+#Surr Test Table 
+```{r}
+
+ 
 surrccm_phyph_n500 <- results_surr_xmap
 
 if (file.exists("surrccm_phyph_n500.rds")) {
@@ -292,16 +371,6 @@ grid.table(output_file)
 # Close the graphics device
 dev.off()
 
-
-
-
-```
-
-
-#Surr Test Table 
-```{r}
-
- 
 
 # surrccm_phyph_n500 <- surrccm_phyph_n500 %>%
 #   group_by(target) %>%
