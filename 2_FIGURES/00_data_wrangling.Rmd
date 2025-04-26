@@ -329,7 +329,8 @@ if (file.exists("CR2016.rds")) {
   CR2016 <- readRDS("CR2016.rds")
 } else {
   # If it's not saved locally, read it from Google Sheets and save it locally
-CR2016 <- read_sheet('https://docs.google.com/spreadsheets/d/1sMcEOIzxPTUZ93-pTJBE0lQ3SI8kKihLZRdpZ32_Lyw/edit?usp=sharing', sheet = 2)
+CR2016 <- read_sheet('https://docs.google.com/spreadsheets/d/1sMcEOIzxPTUZ93-pTJBE0lQ3SI8kKihLZRdpZ32_Lyw/edit?gid=2119695334#gid=2119695334
+', sheet = 2)
   saveRDS(CR2017, "CR2016.rds")
 }
 
@@ -407,7 +408,6 @@ ag_df_CR <-df_CR %>%
    group_by(date) %>%
   summarise(chl=mean(chl, na.rm = TRUE), phy=mean(phy, na.rm = TRUE), ph=mean(ph, na.rm = TRUE), Celsius=mean(Celsius,na.rm = TRUE), spcond=mean(spcond,na.rm = TRUE), do=mean(do,na.rm = TRUE), turb=mean(turb,na.rm = TRUE), Salinity = mean(Salinity,na.rm = TRUE))
 
-## eventually find a way around this
 ag_df_CR <- na.omit(ag_df_CR)
 
 

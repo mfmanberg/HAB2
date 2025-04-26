@@ -273,9 +273,16 @@ if(!file.exists("Multi_E2_D3.rds")){
 #HEAD
 
 
-head(Multi_E2_D3)
-  
-head(Multi_E3_D5)
+Multi_E3_D5_obs <- Multiview(dataFrame = ag_df_CR, lib = "1 1014", pred = "1 1014", E =3, D=5,
+                            columns = "chl phy ph Celsius spcond do turb Salinity sin_season", target = "phy")
+
+
+Multi_E3_D5_pred <- Multiview(dataFrame = ag_df_CR, lib = "1 1014", pred = "1 1189", E =3, D=5,
+                            columns = "chl phy ph Celsius spcond do turb Salinity sin_season", target = "phy")
+
+
+saveRDS(Multi_E3_D5_obs, file = "Multi_E3_D5_obs.rds")
+saveRDS(Multi_E3_D5_pred, file = "Multi_E3_D5_pred.rds")
   
 
 ```

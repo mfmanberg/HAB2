@@ -114,7 +114,7 @@ All.Cyano2 <- All.Cyano2[-1, ]
 
 cyano_ag_df_CR <- merge(ag_df_CR, All.Cyano2, by = "date", all = TRUE)
 
-
+saveRDS(cyano_ag_df_CR, file = "cyano_ag_df_CR.rds")
 
 ```
 
@@ -148,11 +148,13 @@ range(cyano_ag_df_CR$scaled_phy, na.rm = TRUE)
 # Plot
 ```{r}
 
+cyano_ag_df_CR$date <- as.Date(cyano_ag_df_CR$date)
+
 cyano_ag_df_CR <- cyano_ag_df_CR %>% pad()
 
 plot(x = cyano_ag_df_CR$date, 
      y = cyano_ag_df_CR$scaled_phy,
-     xlab = "Date", ylab = "Scaled Phycocanin (RFU)", main = "Scaled Phy V. Cyano",
+     xlab = "Date", ylab = "Scaled Phycocanin (RFU)", main = "Scaled Phycocanin (RFU) V. Cyanobacteria (cells/mL)",
      type = "n") 
    #  ylim = c(y_min, y_max))  
 
@@ -173,24 +175,19 @@ legend("topright", legend = c("Scaled Phy", "Cyanobacteria (cells/mL)",
 cyano_ag_df_CR <- cyano_ag_df_CR %>%
   filter(!is.na(phy))  # Remove rows where 'phy' is NA
 
-
-#	2015-11-05
-#2017-05-10
+# how many rows have values in cyanobacteria and no NAs in phy
 
 
 
+library(dplyr)
 
-#       
-# cmap.ph.phy.plot <- plot(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], type = "l",
-#      main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-# lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], col = "red")
-# lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,2], col = "blue")
-# abline(h = (abs(ph.phy.corr)), col = "green", lty = 2)
-# abline(h = critical.r(1189), col = "darkgreen", lty = 2)
-# legend("topright", legend = c(colnames(cmap.ph.phy)[2:3], "Correlation", 
-#                               "Critical Correlation"), 
-#        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
-# 
+cyano_ag_df_CR %>%
+  filter(!is.na(`Cyanobacteria (cells/mL)`), !is.na(phy)) %>%
+  nrow()
+
+
+
+
 ```
 
 
@@ -206,7 +203,7 @@ summary(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
 
  #20000 cells per ml = bloom
 
-bloomthresholdphy = 20000 /   69560  #phy threshold for bloom
+bloomthreshold = 20000 /   69560  #phy threshold for bloom
 print(bloomthreshold)
 
 
@@ -218,7 +215,7 @@ print(scaled_bloomthreshold)
 
 #linear regression
   
-  plot(cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy)
+  plot(cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy, xlab = "Phycocanin (RFU)", ylab = "Cyanobacteria (cells/mL)", main = "Cyanobacteria (cells/mL) ~ Phycocanin ")
   abline(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
 
   
@@ -227,9 +224,60 @@ print(scaled_bloomthreshold)
   
 ```
 
+#Timeline
+
+```{r}
+
+cyano_ag_df_CR <- cyano_ag_df_CR %>%
+  filter(!is.na(phy))  # Remove rows where 'phy' is NA
+
+#pad(cyano_ag_df_CR)
+
+library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Ensure the 'Date' column is in Date format
+cyano_ag_df_CR$Date <- as.Date(cyano_ag_df_CR$date)
+
+# Reshape the data from wide to long format for easier plotting
+cyano_long_df <- cyano_ag_df_CR %>%
+  pivot_longer(cols = c("chl", "phy", "ph", "Celsius", "spcond", "do", "turb", "Salinity", "sin_season", "Cyanobacteria (cells/mL)"),
+               names_to = "Variable",
+               values_to = "Value")  %>%
 
 
+mutate(Variable = recode(Variable,
+    "chl" = "Chlorophyll (RFU)",
+    "phy" = "Phycocyanin (RFU)",
+    "ph" = "pH",
+    "Celsius" = "Temperature (°C)",
+    "spcond" = "Specific Conductivity (mS/cm)",
+    "Salinity" = "Practical Salinity (S/m)",
+    "turb" = "Turbidity (FNU)",
+    "do" = "Dissolved Oxygen (mg/L)", 
+    "sin_season" = "Seasonality", 
+    
+  ))
 
+
+cyano_long_df <- na.omit(cyano_long_df)
+
+
+# Plot
+ggplot(cyano_long_df, aes(x = Date, y = Variable, fill = Variable)) +
+  geom_tile(height = 0.8) +  # Create bars
+  scale_fill_viridis_d() +  # Change to discrete color scale
+  labs(x = "Date", y = "Variable", title = "Data Timeline") +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(hjust = 0.5)
+    )# Adjust y-axis text size
+
+
+```
 
 
 
