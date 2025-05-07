@@ -803,7 +803,7 @@ print(summary(fcast))
 
 
 ##PHY
-
+p
 
 #Fit Dataset
 rate <- ts(ag_df_CR[,'phy'],start = c(2015,5), frequency = 365 )
@@ -3875,13 +3875,48 @@ tau
 
 
 
+```
+#Univar
+
+```{r}
+
+Simplex_tau7_phy
+
+rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i,
+lib = lib_ins, pred = lib_ins, showPlot = TRUE, includeData = TRUE) #lib train, #pred is pred 
 
 
 
+#SELECT THETA
+rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                                    E=3,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, 
+#PREDICT - SMAP
 
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=3,theta=8) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
+
+Univar <- data.frame(
+  phy = preds_AR$predictions$Predictions,
+  date = preds_AR$predictions$date
+)
+
+#AR(1)
+
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+preds_AR <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_ins, E=1,theta=0,tau=-tau_i,Tp=tau_i,exclusionRadius=tau_i) #lib train, #pred is pred 
+
+stats_AR <- ComputeError(preds_AR$predictions$Observations,
+                         preds_AR$predictions$Predictions)
 
 ```
-
 
 
 

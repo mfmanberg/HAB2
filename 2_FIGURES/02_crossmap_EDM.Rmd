@@ -10,6 +10,14 @@ editor_options:
     wrap: 72
 ---
 
+
+#Library 
+
+```{r}
+library(rEDM)
+library(tidyverse)
+```
+
 ```{r}
 
 ag_df_CR <- readRDS("C:/Users/Matt hamburbur/Desktop/HAB2/HAB2/1_LIB/ag_df_CR.rds")
@@ -21,47 +29,18 @@ library(tidyverse)
 
 
 #Surr functions
-```{r}
-
-
-make_yday_surrogate <- function(yday,ts,bw=28,num_surr=1){
-  
-  # ksmooth(df_ph$yday,df_ph$ph,bandwidth=28,x.points=120:320,kernel="normal") 
-  
-  if (any(!is.finite(ts))) {
-    stop("SurrogateData(): input time series contained invalid values")
-  }
-  n = length(ts)
-  
-  seasonal_cyc = map_dbl(yday,\(yday_i) ksmooth(yday,ts,bandwidth=bw,x.points=yday_i)$y)
-  seasonal_resid = ts - seasonal_cyc
-  
-  # randomize the temporal sequence of residuals and add them back to the cycle.
-  
-  return(sapply(1:num_surr, function(i) {
-    seasonal_cyc + sample(seasonal_resid, n)
-  }))
-  
-  
-}
-
-
-
-
-```
 
 
 ```{r}
 do_1_xmap <- function(dataFrame, E, tau, Tp, lib=NULL, pred=NULL, columns, target, sample, exclusionRadius, random = FALSE, showPlot = FALSE, ...) {
+
 # do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, sample, exclusionRadius, random = FALSE, showPlot = FALSE) {
 
-
-do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, sample, exclusionRadius, random = FALSE, showPlot = FALSE) { 
-  if(is.null(lib)){
+    if(is.null(lib)){
     lib <- paste("1",nrow(dataFrame))
     pred <- lib
   }
-  
+
   # Run CCM
   ccm_result <- Simplex(
     dataFrame = dataFrame,
@@ -75,17 +54,17 @@ do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, samp
     exclusionRadius = exclusionRadius,
     ...
   )
-  
+
   # return(ccm_result)
-  
+
   xmap_stats <- ComputeError(ccm_result$Observations,ccm_result$Predictions)
-  
+
   # # Extract rho at maximum library size
   # # max_lib_size <- max(as.numeric(unlist(strsplit(libSizes, " "))))
   # rho_max <- ccm_result %>%
   #   # filter(LibrarySize == max_lib_size) %>%
   #   pull(rho)
-  
+
   return(xmap_stats)  # return mae, rmse, and rho
   # return(xmap_stats$rho)  # or return just rho
 }
@@ -125,9 +104,11 @@ do_1_surr_xmap <- function(dataFrame, E, tau, Tp=0, columns, target, lib=NULL, p
   
   xmap_stats <- do_1_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target, 
                         lib=lib, pred=pred, exclusionRadius=exclusionRadius)
-  xmap_stats <- do_1_surr_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target, 
-                        lib=lib, pred=pred, exclusionRadius=exclusionRadius, yday_col = "yday")   #function correct??
+  
+  # xmap_stats <- do_1_surr_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target, 
+  #                       lib=lib, pred=pred, exclusionRadius=exclusionRadius, yday_col = "yday")   #function 
 
+  return(xmap_stats)
 }
 
 #do_1_xmap?
@@ -142,7 +123,7 @@ do_1_surr_xmap <- function(dataFrame, E, tau, Tp=0, columns, target, lib=NULL, p
 ```{r}
 
 
-dataFrame <- readRDS("C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\1_LIB\\ag_df_CR.rds") %>%
+# dataFrame <- readRDS("C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\1_LIB\\ag_df_CR.rds") %>%
 
 dataFrame <- ag_df_CR %>%
   mutate(yday = yday(date)) %>%
@@ -180,7 +161,7 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   result_i <- map_dfr(1:n_surr,\(index){
     temp <-  do_1_surr_xmap(
       dataFrame,
-      E=6,
+      E=3,
       tau=tau_i,
       Tp=0,
       columns="phy",
@@ -188,7 +169,7 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
       exclusionRadius = tau_i) #do_1_surr_ccm
     
 
-    temp <-  do_1_surr_ccm(dataFrame,E=6,tau=tau_i,Tp=0,columns="phy",target = "ph", 
+    temp <-  do_1_surr_xmap(dataFrame,E=3,tau=tau_i,Tp=0,columns="phy",target = "ph", 
                            exclusionRadius = tau_i) 
     temp$index = index
     return(temp)
@@ -201,89 +182,38 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
 })
 
-
+n1_results_surr_xmap <- results_surr_xmap
 
 
 
 ```
 
-
-#   Run cross-map at max library size for the REAL covariates.
-
-```{r}
-
-
-
-#change surrogate to regular
-#run regular calc 1 time (no loop)
-#estimmated p value is fraction of surrogates that beat rho max 
-
-tau_i <- 7
-n_surr <- 1 #1
-v_test_var <- c("pH","Celsius","spcond","do","turb","Salinity")
-
-results_xmap <- map_dfr(v_test_var,\(target_i){  #real answers 
-  
-  result_i <- map_dfr(1:n_surr,\(index){
-    temp <-  do_1_xmap(dataFrame,E=6,tau=tau_i,Tp=0,columns="phy",target=target_i,exclusionRadius = tau_i) #do_1_surr_ccm
-    temp$index = index
-    return(temp)
-    })
-  
-  result_i$target = target_i
-  result_i <- result_i %>% select(target,index,everything())
-  return(result_i)
-  
-  
-})
-
-surrccm_phyph_n1 <- results_surr_xmap
-
-if (file.exists("surrccm_phyph_n1.rds")) {
-  # If it's saved locally, load the data
-  surrccm_phyph_n1 <- readRDS("surrccm_phyph_n1.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-surrccm_phyph_1 <- surrccm_phyph_n1
-  saveRDS(surrccm_phyph_n1, "surrccm_phyph_n1.rds")
-}
-
-
- library(gridExtra)
-library(grid)
-# 
-# # Define output file path
-output_file <- "results_surr_xmap"
-# 
-# # Open PNG graphics device
- png(output_file, width = 1200, height = 600, res = 150)  # Adjust size & resolution
-# 
-# # Create table and plot
- grid.newpage()
- grid.table(results_df)
-# 
-# # Close the graphics device
- dev.off()
-# 
-
-```
 
 
 #   N = 500
 
 ```{r}
 
-#500 N
 
 tau_i <- 7
-n_surr <-  500 #1
-v_test_var <- c("pH","Celsius","spcond","do","turb","Salinity", "sin_season")
-
+n_surr <- 500 #1
+v_test_var <- c("ph","Celsius","spcond","do","turb","Salinity", "sin_season")
 
 results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
   result_i <- map_dfr(1:n_surr,\(index){
-    temp <-  do_1_surr_xmap(Surrogate,E=6,tau=tau_i,Tp=0,columns="phy",target=target_i,exclusionRadius = tau_i) 
+    temp <-  do_1_surr_xmap(
+      dataFrame,
+      E=3,
+      tau=tau_i,
+      Tp=0,
+      columns="phy",
+      target= target_i,
+      exclusionRadius = tau_i) #do_1_surr_ccm
+    
+
+    temp <-  do_1_surr_xmap(dataFrame,E=3,tau=tau_i,Tp=0,columns="phy",target = "ph", 
+                           exclusionRadius = tau_i) 
     temp$index = index
     return(temp)
     })
@@ -295,9 +225,9 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
 })
 
+n500_results_surr_xmap <- results_surr_xmap
 
-
-
+#saveRDS(n500_results_surr_xmap, file = "n500_results_surr_xmap.rds" )
 
 ```
 
@@ -305,7 +235,64 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
 #Surr Test Table 
 ```{r}
 
- 
+avg_n500_results_surr_xmap <- n500_results_surr_xmap %>%
+  group_by(target) %>%
+  summarise(
+    mean_MAE = mean(MAE, na.rm = TRUE),
+    mean_rho = mean(rho, na.rm = TRUE),
+    mean_RMSE = mean(RMSE, na.rm = TRUE)
+  )
+
+
+surrtable <- n1_results_surr_xmap %>%
+  rowwise() %>%
+  mutate(
+    Pvalue = mean(
+      n500_results_surr_xmap$rho[n500_results_surr_xmap$target == target] >= rho, #mean (psurr >= pmax)
+      na.rm = TRUE
+    )
+  ) %>%
+  ungroup()
+
+
+n500_results_surr_xmap <- n500_results_surr_xmap %>%
+  group_by(target) %>%
+  filter(rho == max(rho, na.rm = TRUE))  %>%
+  select(-index, -MAE, -RMSE)
+
+
+surrtable2 <- left_join(n500_results_surr_xmap,n1_results_surr_xmap , by = "target")  %>%
+  select(-index, -MAE, -RMSE) %>%
+  rename(
+    pmax = rho.x, #n1
+    psurr = rho.y #n500
+)
+
+surrtable2 <- surrtable2 %>%
+  left_join(select(surrtable, target, Pvalue), by = "target")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 surrccm_phyph_n500 <- results_surr_xmap
 
 if (file.exists("surrccm_phyph_n500.rds")) {
@@ -388,10 +375,13 @@ surrtable2 <- surrtable2 %>%
 
 
 #CMAPS
+go off univar tau
+- help us pick timescale of analysis appropiate for focal
+rather than refight value 
 
 
 ```{r}
-
+tau_ccm <- 7
 #ph
 
 critical.r <- function( n, alpha = .05 ) {
@@ -399,8 +389,9 @@ critical.r <- function( n, alpha = .05 ) {
   critical.t <- qt(alpha/2, df, lower.tail = F)
   critical.r <- sqrt( (critical.t^2) / ( (critical.t^2) + df ) )
    return(critical.r)
+}
 
-cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1200 1300 1374", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
+cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1200 1300 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
 
 ph.phy.corr <- cor(cmap.ph.phy)
 ph.phy.corr <- ph.phy.corr[1, 3]
@@ -408,7 +399,7 @@ ph.phy.corr <- ph.phy.corr[1, 3]
 
 #CELSIUS
 
-cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
+cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
 
 Celsius.phy.corr <- cor(cmap.Celsius.phy)
 Celsius.phy.corr <- Celsius.phy.corr[1, 3]
@@ -419,7 +410,7 @@ Celsius.phy.plot <- plot(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], typ
 lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], col = "red")
 lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,2], col = "blue")
 abline(h = (abs(Celsius.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+abline(h = critical.r(1374), col = "darkgreen", lty = 2)
 legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation", 
                               "Critical Correlation"), 
        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
@@ -427,7 +418,7 @@ legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation",
 
 
 #Celsius 
-cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
+cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
 
 Celsius.phy.corr <- cor(cmap.Celsius.phy)
 Celsius.phy.corr <- Celsius.phy.corr[1, 3]
@@ -438,7 +429,7 @@ Celsius.phy.plot <- plot(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], typ
 lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], col = "red")
 lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,2], col = "blue")
 abline(h = (abs(Celsius.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+abline(h = critical.r(1374), col = "darkgreen", lty = 2)
 legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation", 
                               "Critical Correlation"), 
        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
@@ -446,7 +437,7 @@ legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation",
 
 #spcond
 
-cmap.spcond.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
+cmap.spcond.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
 
 spcond.phy.corr <- cor(cmap.spcond.phy)
 spcond.phy.corr <- spcond.phy.corr[1, 3]
@@ -456,14 +447,14 @@ spcond.phy.plot <- plot(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,3], type =
 lines(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,3], col = "red")
 lines(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,2], col = "blue")
 abline(h = (abs(spcond.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+abline(h = critical.r(1374), col = "darkgreen", lty = 2)
 legend("topright", legend = c(colnames(cmap.spcond.phy)[2:3], "Correlation", 
                               "Critical Correlation"), 
        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
 
 
 #do 
-cmap.do.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "do", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
+cmap.do.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "do", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
 
 do.phy.corr <- cor(cmap.do.phy)
 do.phy.corr <- do.phy.corr[1, 3]
@@ -474,7 +465,7 @@ do.phy.plot <- plot(x = cmap.do.phy[,1], y = cmap.do.phy[,3], type = "l",
 lines(x = cmap.do.phy[,1], y = cmap.do.phy[,3], col = "red")
 lines(x = cmap.do.phy[,1], y = cmap.do.phy[,2], col = "blue")
 abline(h = (abs(do.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+abline(h = critical.r(1374), col = "darkgreen", lty = 2)
 legend("topright", legend = c(colnames(cmap.do.phy)[2:3], "Correlation", 
                               "Critical Correlation"), 
        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
@@ -483,7 +474,7 @@ legend("topright", legend = c(colnames(cmap.do.phy)[2:3], "Correlation",
 #TURB
 
 
-cmap.turb.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
+cmap.turb.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
 
 turb.phy.corr <- cor(cmap.turb.phy)[1, 3]
 
@@ -493,7 +484,7 @@ turb.phy.plot <- plot(x = cmap.turb.phy[,1], y = cmap.turb.phy[,3], type = "l",
 lines(x = cmap.turb.phy[,1], y = cmap.turb.phy[,3], col = "red")
 lines(x = cmap.turb.phy[,1], y = cmap.turb.phy[,2], col = "blue")
 abline(h = (abs(turb.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+abline(h = critical.r(1374), col = "darkgreen", lty = 2)
 legend("topright", legend = c(colnames(cmap.turb.phy)[2:3], "Correlation", 
                               "Critical Correlation"), 
        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
@@ -502,7 +493,11 @@ legend("topright", legend = c(colnames(cmap.turb.phy)[2:3], "Correlation",
 
 #SALINITY
 
-cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
+cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
+
+cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = 4, tau=-tau_ccm, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 100 200 400 600 1000", sample = 10, 
+                         includeData = TRUE,
+                         exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
 
 Salinity.phy.corr <- cor(cmap.Salinity.phy)
 Salinity.phy.corr <- Salinity.phy.corr[1, 3]
@@ -513,14 +508,14 @@ Salinity.phy.plot <- plot(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,3], 
 lines(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,3], col = "red")
 lines(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,2], col = "blue")
 abline(h = (abs(Salinity.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+abline(h = critical.r(1374), col = "darkgreen", lty = 2)
 legend("topright", legend = c(colnames(cmap.Salinity.phy)[2:3], "Correlation", 
                               "Critical Correlation"), 
        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
 
 #sin_season
 
-cmap.sin_season.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "sin_season", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1169", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
+cmap.sin_season.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "sin_season", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
 
 sin_season.phy.corr <- cor(cmap.sin_season.phy)
 sin_season.phy.corr <- sin_season.phy.corr[1, 3]
@@ -531,7 +526,7 @@ sin_season.phy.plot <- plot(x = cmap.sin_season.phy[,1], y = cmap.sin_season.phy
 lines(x = cmap.sin_season.phy[,1], y = cmap.sin_season.phy[,3], col = "red")
 lines(x = cmap.sin_season.phy[,1], y = cmap.sin_season.phy[,2], col = "blue")
 abline(h = (abs(sin_season.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1189), col = "darkgreen", lty = 2)
+abline(h = critical.r(1374), col = "darkgreen", lty = 2)
 legend("topright", legend = c(colnames(cmap.sin_season.phy)[2:3], "Correlation", 
                               "Critical Correlation"), 
        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
@@ -551,7 +546,7 @@ legend("topright", legend = c(colnames(cmap.sin_season.phy)[2:3], "Correlation",
 
 tau_i <- 7
 
-ag_df_CR <- readRDS("C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\1)LIB\\ag_df_CR.rds")
+#ag_df_CR <- readRDS("C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\1)LIB\\ag_df_CR.rds")
 ag_df_CR <- na.omit(ag_df_CR)
 
 library(rEDM)
@@ -590,48 +585,66 @@ plot_ccm_result <- function(cmap_result, var_name, target_name = "Phycocanin (RF
 }
 
 # Call the helper function
-plot_ccm_result(cmap.Celsius.phy, "Temperature (°C)", corr_value = Celsius.phy.corr, critical_corr = critical.r(1189), 
+
+#pH
+
+plot_ccm_result(cmap.ph.phy, "ph", corr_value = ph.phy.corr, critical_corr = critical.r(1374), 
+                legend_labels = c("ph:Phycocanin", "Phycocanin:ph", "Correlation", "Critical Correlation"),
+                legend_colors = c("blue", "red", "green", "darkgreen"),
+                legend_lty = c(1, 1, 2, 2))
+
+
+
+
+#TEMPERATURE
+
+
+
+plot_ccm_result(cmap.Celsius.phy, "Temperature (°C)", corr_value = Celsius.phy.corr, critical_corr = critical.r(1374), 
                 legend_labels = c("Celsius:Phycocanin", "Phycocanin:Celsius", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
                                                                                      
                                                                                                                      
-# Specific Conductivity  V. Phyocanin (RFU)
+# SPECIFIC CONDUCTIVITY  V. Phyocanin (RFU)
+
 plot_ccm_result(cmap.spcond.phy, "Specific Conductivity (mS/cm)", 
                 corr_value = spcond.phy.corr, 
-                critical_corr = critical.r(1189),
+                critical_corr = critical.r(1374),
                 legend_labels = c("Specific Conductivity:Phycocanin", "Phycocanin:Specific Conductivity", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
 
-# For Dissolved Oxygen
+#DISSOLVED OXYGEN
+
 plot_ccm_result(cmap.do.phy, "Dissolved Oxygen (mg/L)", 
                 corr_value = do.phy.corr, 
-                critical_corr = critical.r(1189),
+                critical_corr = critical.r(1374),
                 legend_labels = c("Dissolved Oxygen:Phycocanin", "Phycocanin:Dissolved Oxygen", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
 
-# For Turbidity
+#TURBIDITY
 plot_ccm_result(cmap.turb.phy, "Turbidity (FNU)", 
                 corr_value = turb.phy.corr, 
-                critical_corr = critical.r(1189),
+                critical_corr = critical.r(1374),
                 legend_labels = c("Turbidity:Phycocanin", "Phycocanin:Turbidity", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
 
-# For Salinity
-plot_ccm_result(cmap.Salinity.phy, "Salinity (S/m)", 
+# SALINITY
+plot_ccm_result(cmap.Salinity.phy, "Practical Salinity (S/m)", 
                 corr_value = Salinity.phy.corr, 
-                critical_corr = critical.r(1189),
+                critical_corr = critical.r(1374),
                 legend_labels = c("Salinity:Phycocanin", "Phycocanin:Salinity", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
 
-#sin_season 
-plot_ccm_result(cmap.sin_season.phy, "Seasonality", 
+#SIN_SEASON 
+
+plot_ccm_result(cmap.sin_season.phy, "Seasonality (days)", 
                 corr_value = sin_season.phy.corr, 
-                critical_corr = critical.r(1189),
+                critical_corr = critical.r(1374),
                 legend_labels = c("Seasonality:Phycocanin", "Phycocanin:Seasonality", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
