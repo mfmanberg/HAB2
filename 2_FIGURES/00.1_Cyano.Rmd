@@ -118,6 +118,48 @@ saveRDS(cyano_ag_df_CR, file = "cyano_ag_df_CR.rds")
 
 ```
 
+#convert cyano to phy 
+```{r}
+lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy)
+
+summary(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
+
+
+phycoef <- as.numeric(coef(lm(cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))[2])
+
+
+
+#Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)          -13133      13002  -1.010    0.315    
+#cyano_ag_df_CR$phy    69560      10003   6.954 2.06e-10 ***
+
+ #20000 cells per ml = bloom
+
+bloomthreshold = 20000 / phycoef  #phy threshold for bloom
+print(bloomthreshold)
+
+
+# Scale it using the same min-max formula:
+scaled_bloomthreshold <- (bloomthreshold - phy_range[1]) / (phy_range[2] - phy_range[1]) * 
+                         (cyano_range[2] - cyano_range[1]) + cyano_range[1]
+
+print(scaled_bloomthreshold)
+
+saveRDS(scaled_bloomthreshold, file = "scaled_bloomthreshold.rds")
+
+
+#linear regression
+  
+  plot(cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy, xlab = "Phycocanin (RFU)", ylab = "Cyanobacteria (cells/mL)", main = "Cyanobacteria (cells/mL) ~ Phycocanin ")
+  abline(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
+
+  
+  
+  
+  
+```
+
+
 #Scale 
 ```{r}
 
@@ -154,7 +196,7 @@ cyano_ag_df_CR <- cyano_ag_df_CR %>% pad()
 
 plot(x = cyano_ag_df_CR$date, 
      y = cyano_ag_df_CR$scaled_phy,
-     xlab = "Date", ylab = "Scaled Phycocanin (RFU)", main = "Scaled Phycocanin (RFU) V. Cyanobacteria (cells/mL)",
+     xlab = "Date", ylab = "Scaled Phycocanin (RFU)", main = "Scaled Phycocanin (RFU) V. Cyanobacteria (cells/mL)", 
      type = "n") 
    #  ylim = c(y_min, y_max))  
 
@@ -165,7 +207,7 @@ lines(cyano_ag_df_CR$date, cyano_ag_df_CR$scaled_phy,
       col = "orange", lwd = 2)
 abline(h = (scaled_bloomthreshold), col = "green", lty = 2)
 legend("topright", legend = c("Scaled Phy", "Cyanobacteria (cells/mL)", 
-                              "Phyocanin Bloom Threshold"), 
+                              "Scaled Phyocanin Bloom Threshold"), 
       col = c("orange", "darkgreen","lightgreen"), lty = c(1, 1, 2))
 
 
@@ -190,39 +232,6 @@ cyano_ag_df_CR %>%
 
 ```
 
-
-#convert cyano to phy 
-```{r}
-lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy)
-
-summary(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
-
-#Estimate Std. Error t value Pr(>|t|)    
-#(Intercept)          -13133      13002  -1.010    0.315    
-#cyano_ag_df_CR$phy    69560      10003   6.954 2.06e-10 ***
-
- #20000 cells per ml = bloom
-
-bloomthreshold = 20000 /   69560  #phy threshold for bloom
-print(bloomthreshold)
-
-
-# Scale it using the same min-max formula:
-scaled_bloomthreshold <- (bloomthreshold - phy_range[1]) / (phy_range[2] - phy_range[1]) * 
-                         (cyano_range[2] - cyano_range[1]) + cyano_range[1]
-
-print(scaled_bloomthreshold)
-
-#linear regression
-  
-  plot(cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy, xlab = "Phycocanin (RFU)", ylab = "Cyanobacteria (cells/mL)", main = "Cyanobacteria (cells/mL) ~ Phycocanin ")
-  abline(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
-
-  
-  
-  
-  
-```
 
 #Timeline
 

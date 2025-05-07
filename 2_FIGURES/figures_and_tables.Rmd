@@ -3,7 +3,7 @@ title: "figures_and_tables"
 output: html_document
 date: "2024-04-03"
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
   markdown: 
     wrap: 72
 ---
@@ -132,6 +132,253 @@ print(results_df)
 
 
 ```
+
+## Print Talbe 
+```{r}
+
+# install.packages("gridExtra")
+# install.packages("grid")
+
+
+library(gridExtra)
+library(grid)
+
+
+AR1_Table <- results_df
+
+
+png("AR1_Table.png", width = 800, height = 400)
+grid.table(AR1_Table)
+dev.off()
+
+
+```
+
+
+#PRELIM PLOTS
+
+
+
+### #pH vs Phycocanin (RFU)
+
+```{r}
+
+#LOAD BLOOM THRESHOLD 
+
+lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy)
+
+summary(lm (cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))
+
+
+phycoef <- as.numeric(coef(lm(cyano_ag_df_CR$`Cyanobacteria (cells/mL)` ~ cyano_ag_df_CR$phy))[2])
+
+
+
+#Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)          -13133      13002  -1.010    0.315    
+#cyano_ag_df_CR$phy    69560      10003   6.954 2.06e-10 ***
+
+ #20000 cells per ml = bloom
+
+bloomthreshold = 20000 / phycoef  #phy threshold for bloom
+print(bloomthreshold)
+
+
+
+#PLOT 
+plot(x = ag_df_CR$ph, y = ag_df_CR$phy, type = "n",
+     xlab = "pH", ylab = "Phycocanin (RFU)", main = "pH vs Phycocanin (RFU)")
+
+abline(h = bloomthreshold, col = "green", lty = 2, lwd = 4)  # Bloom threshold line
+abline(lm(ag_df_CR$phy ~ ag_df_CR$ph), col = "purple", lty = 1, lwd = 4)
+abline(h = mean(ag_df_CR$phy), col = "orange", lty = 2, lwd = 4)
+abline(v = mean(ag_df_CR$ph), col = "pink", lty = 2, lwd = 4)
+
+points(x = ag_df_CR$ph, y = ag_df_CR$phy, col = "red")
+
+legend("topright",
+       legend = c("Phycocanin (RFU) Bloom Threshold", "Best Fit Line: Phycocanin (RFU) ~ pH", "Mean Phycocanin (RFU)", "Mean pH"),
+       col = c("green", "purple", "orange", "pink", "darkgreen", "red"),
+       lty = c(2, 1, 2, 2, NA), pch = c(NA, NA, NA, NA, 1), lwd = c(4, 4, 4, 4, NA))
+
+
+```
+
+
+### Chlorophyll (RFU) vs Phycocanin (RFU)
+
+chl v phy
+
+```{r}
+
+plot(x = ag_df_CR$chl, y = ag_df_CR$phy, type = "n",
+     xlab = "Chlorophyll (RFU)", ylab = "Phycocanin (RFU)", main = "Chlorophyll (RFU) vs Phycocanin (RFU)")
+
+abline(h = bloomthreshold, col = "green", lty = 2, lwd = 4)  # Bloom threshold line
+abline(lm(ag_df_CR$phy ~ ag_df_CR$chl), col = "purple", lty = 1, lwd = 4)
+abline(h = mean(ag_df_CR$phy), col = "orange", lty = 2, lwd = 4)
+abline(v = mean(ag_df_CR$chl), col = "pink", lty = 2, lwd = 4)
+abline(lm(cyano_ag_df_CR$phy ~ cyano_ag_df_CR$`Cyanobacteria (cells/mL)`), col = "darkgreen", lty = 2, lwd = 4)
+
+points(x = ag_df_CR$chl, y = ag_df_CR$phy, col = "red")
+
+legend("topright",
+       legend = c("Phycocanin (RFU) Bloom Threshold", "Best Fit Line: Phycocanin (RFU) ~ Chlorophyll (RFU)", "Mean Phycocanin (RFU)", "Mean Chlorophyll (RFU)", "Best Fit Line: Phycocanin (RFU) ~ Cyanobacteria (cells/mL)", "Points"),
+       col = c("green", "purple", "orange", "pink", "darkgreen", "red"),
+       lty = c(2, 1, 2, 2, 2, NA), pch = c(NA, NA, NA, NA, NA, 1), lwd = c(4, 4, 4, 4, 4, NA))
+
+
+```
+
+### Temperature (°C) vs Phycocanin (RFU)
+
+Celsius v phy
+
+```{r}
+
+plot(x = ag_df_CR$Celsius, y = ag_df_CR$phy, type = "n",
+     xlab = "Temperature (°C)", ylab = "Phycocanin (RFU)", main = "Temperature (°C) vs Phycocanin (RFU)")
+
+abline(h = bloomthreshold, col = "green", lty = 2, lwd = 4)  # Bloom threshold line
+abline(lm(ag_df_CR$phy ~ ag_df_CR$Celsius), col = "purple", lty = 1, lwd = 4)
+abline(h = mean(ag_df_CR$phy), col = "orange", lty = 2, lwd = 4)
+abline(v = mean(ag_df_CR$Celsius), col = "pink", lty = 2, lwd = 4)
+abline(lm(cyano_ag_df_CR$phy ~ cyano_ag_df_CR$`Cyanobacteria (cells/mL)`), col = "darkgreen", lty = 2, lwd = 4)
+
+points(x = ag_df_CR$Celsius, y = ag_df_CR$phy, col = "red")
+
+legend("topright",
+       legend = c("Phycocanin (RFU) Bloom Threshold", "Best Fit Line: Phycocanin (RFU) ~ Temperature (°C)", "Mean Phycocanin (RFU)", "Mean Temperature (°C)", "Best Fit Line: Phycocanin (RFU) ~ Cyanobacteria (cells/mL)", "Points"),
+       col = c("green", "purple", "orange", "pink", "darkgreen", "red"),
+       lty = c(2, 1, 2, 2, 2, NA), pch = c(NA, NA, NA, NA, NA, 1), lwd = c(4, 4, 4, 4, 4, NA))
+
+
+
+
+
+```
+
+
+### Specific Conductivity (mS/cm) vs Phycocanin (RFU)
+
+spcond v phy
+
+```{r}
+
+plot(x = ag_df_CR$spcond, y = ag_df_CR$phy, type = "n",
+     xlab = "Specific Conductivity (mS/cm)", ylab = "Phycocanin (RFU)", main = "Specific Conductivity (mS/cm) vs Phycocanin (RFU)")
+
+abline(h = bloomthreshold, col = "green", lty = 2, lwd = 4)  # Bloom threshold line
+abline(lm(ag_df_CR$phy ~ ag_df_CR$spcond), col = "purple", lty = 1, lwd = 4)
+abline(h = mean(ag_df_CR$phy), col = "orange", lty = 2, lwd = 4)
+abline(v = mean(ag_df_CR$spcond), col = "pink", lty = 2, lwd = 4)
+abline(lm(cyano_ag_df_CR$phy ~ cyano_ag_df_CR$`Cyanobacteria (cells/mL)`), col = "darkgreen", lty = 2, lwd = 4)
+
+points(x = ag_df_CR$spcond, y = ag_df_CR$phy, col = "red")
+
+legend("topright",
+       legend = c("Phycocanin (RFU) Bloom Threshold", "Best Fit Line: Phycocanin (RFU) ~ Specific Conductivity", "Mean Phycocanin (RFU)", "Mean Specific Conductivity", "Best Fit Line: Phycocanin (RFU) ~ Cyanobacteria (cells/mL)", "Points"),
+       col = c("green", "purple", "orange", "pink", "darkgreen", "red"),
+       lty = c(2, 1, 2, 2, 2, NA), pch = c(NA, NA, NA, NA, NA, 1), lwd = c(4, 4, 4, 4, 4, NA))
+
+
+
+```
+
+
+### Turbidity (FNU) vs Phycocanin (RFU)
+
+
+turb v phy
+```{r}
+
+plot(x = ag_df_CR$turb, y = ag_df_CR$phy, type = "n",
+     xlab = "Turbidity (FNU)", ylab = "Phycocanin (RFU)", main = "Turbidity vs Phycocanin (RFU)")
+
+abline(h = bloomthreshold, col = "green", lty = 2, lwd = 4)  # Bloom threshold line
+abline(lm(ag_df_CR$phy ~ ag_df_CR$turb), col = "purple", lty = 1, lwd = 4)
+abline(h = mean(ag_df_CR$phy), col = "orange", lty = 2, lwd = 4)
+abline(v = mean(ag_df_CR$turb), col = "pink", lty = 2, lwd = 4)
+abline(lm(cyano_ag_df_CR$phy ~ cyano_ag_df_CR$`Cyanobacteria (cells/mL)`), col = "darkgreen", lty = 2, lwd = 4)
+
+points(x = ag_df_CR$turb, y = ag_df_CR$phy, col = "red")
+
+legend("topright",
+       legend = c("Phycocanin (RFU) Bloom Threshold", "Best Fit Line: Phycocanin (RFU) ~ Turbidity (FNU)", "Mean Phycocanin (RFU)", "Mean Turbidity", "Best Fit Line: Phycocanin (RFU) ~ Cyanobacteria (cells/mL)", "Points"),
+       col = c("green", "purple", "orange", "pink", "darkgreen", "red"),
+       lty = c(2, 1, 2, 2, 2, NA), pch = c(NA, NA, NA, NA, NA, 1), lwd = c(4, 4, 4, 4, 4, NA))
+
+
+
+
+
+```
+
+
+### Practical Salinity (S/m) vs Phycocanin (RFU)
+
+Salinity v phy
+```{r}
+
+plot(x = ag_df_CR$Salinity, y = ag_df_CR$phy, type = "n",
+     xlab = "Practical Salinity (S/m)", ylab = "Phycocanin (RFU)", main = "Practical Salinity (S/m) vs Phycocanin (RFU)")
+
+abline(h = bloomthreshold, col = "green", lty = 2, lwd = 4)  # Bloom threshold line
+abline(lm(ag_df_CR$phy ~ ag_df_CR$Salinity), col = "purple", lty = 1, lwd = 4)
+abline(h = mean(ag_df_CR$phy), col = "orange", lty = 2, lwd = 4)
+abline(v = mean(ag_df_CR$Salinity), col = "pink", lty = 2, lwd = 4)
+abline(lm(cyano_ag_df_CR$phy ~ cyano_ag_df_CR$`Cyanobacteria (cells/mL)`), col = "darkgreen", lty = 2, lwd = 4)
+
+points(x = ag_df_CR$Salinity, y = ag_df_CR$phy, col = "red")
+
+legend("topright",
+       legend = c("Phycocanin (RFU) Bloom Threshold", "Best Fit Line: Phycocanin (RFU) ~ Practical Salinity (S/m)", "Mean Phycocanin (RFU)", "Mean Salinity", "Best Fit Line: Phycocanin (RFU) ~ Cyanobacteria (cells/mL)", "Points"),
+       col = c("green", "purple", "orange", "pink", "darkgreen", "red"),
+       lty = c(2, 1, 2, 2, 2, NA), pch = c(NA, NA, NA, NA, NA, 1), lwd = c(4, 4, 4, 4, 4, NA))
+
+
+
+
+```
+
+
+### Seasonality vs Phycocanin (RFU)
+
+sin_season v phy
+```{r}
+plot(x = ag_df_CR$sin_season, y = ag_df_CR$phy, type = "n",
+     xlab = "Seasonality", ylab = "Phycocanin (RFU)", main = "Seasonality vs Phycocanin (RFU)")
+
+abline(h = bloomthreshold, col = "green", lty = 2, lwd = 4)  # Bloom threshold line
+abline(lm(ag_df_CR$phy ~ ag_df_CR$sin_season), col = "purple", lty = 1, lwd = 4)
+abline(h = mean(ag_df_CR$phy), col = "orange", lty = 2, lwd = 4)
+abline(v = mean(ag_df_CR$sin_season), col = "pink", lty = 2, lwd = 4)
+abline(lm(cyano_ag_df_CR$phy ~ cyano_ag_df_CR$`Cyanobacteria (cells/mL)`), col = "darkgreen", lty = 2, lwd = 4)
+
+points(x = ag_df_CR$sin_season, y = ag_df_CR$phy, col = "red")
+
+legend("topright",
+       legend = c("Phycocanin (RFU) Bloom Threshold", "Best Fit Line: Phycocanin (RFU) ~ Seasonality", "Mean Phycocanin (RFU)", "Mean Seasonality", "Best Fit Line: Phycocanin (RFU) ~ Cyanobacteria (cells/mL)", "Points"),
+       col = c("green", "purple", "orange", "pink", "darkgreen", "red"),
+       lty = c(2, 1, 2, 2, 2, NA), pch = c(NA, NA, NA, NA, NA, 1), lwd = c(4, 4, 4, 4, 4, NA))
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #ARIMA
 
@@ -337,7 +584,7 @@ print(summary(fcast))
 #fit_basic1<- auto.arima(df_CR,xreg=trainREG_TS)
 #forecast_1<-forecast(fit_basic1,xreg = testREG_TS)
 
-ARIMA_ag_df_phy <- saveRDS(fcast, file = "ARIMA_ag_df_chl")
+ARIMA_ag_df_chl <- saveRDS(fcast, file = "ARIMA_ag_df_chl")
 
 
 #fcast$mean
@@ -372,6 +619,9 @@ ARIMA_ag_df_phy_pred_results$rho
 
 ##PHY
 
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+
 ag_df_CR <- ag_df_CR  %>% pad()
 ag_df_CR$phy <- as.numeric(ag_df_CR$phy)
 
@@ -404,7 +654,7 @@ print(summary(fcast))
 #forecast_1<-forecast(fit_basic1,xreg = testREG_TS)
 
 
-ARIMA_ag_df_phy <- saveRDS(fcast, file = "ARIMA_ag_df_phy")
+ARIMA_ag_df_phy <- saveRDS(fcast, file = "ARIMA_ag_df_phy.rds")
 
 
 fcast
@@ -442,10 +692,516 @@ dev.off()
 
 ```
 
-#Histogram
+#Univariate Histogram 
+
+## ARIMA
+```{r}
+#ARIMA
+
+library(forecast)
+library(padr)
+library(ggplot2)
+library(tidyverse)
+
+
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+
+ag_df_CR <- ag_df_CR  %>% pad()
+ag_df_CR$phy <- as.numeric(ag_df_CR$phy)
+
+
+#Fit Dataset
+rate <- ts(ag_df_CR[,'phy'],start = c(2015,5), frequency = 365 )
+#Tell the gaps and days 
+
+
+
+#Grab Data
+autoplot(rate) + ggtitle ("ARIMA - Daily Aggregate ") + ylab("Phycocanin (RFU)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#Build ARIMA Model - include seasonal autoregressive and seasonal autoregressive moving averages.
+fit_ARIMA_ag_phy <-auto.arima(rate, seasonal = TRUE)
+print(summary(fit_ARIMA_ag_phy))
+checkresiduals(fit_ARIMA_ag_phy)
+
+
+#Forecast
+fcast <- forecast(fit_ARIMA_ag_phy, h =365) #h = amount of periods ahead
+autoplot
+plot(fcast)
+print(summary(fcast))
+
+
+#Wrangle
+
+ARIMA_ag_df_phy_pred <- data.frame(fcast$mean)
+print(ARIMA_ag_df_phy_pred)
+
+
+colnames(ARIMA_ag_df_phy_pred) <- "forecast_phy"
+
+# Create date sequence starting from the 172nd day of 2023
+start_date <- as.Date("2023-01-01") + 171  # 172nd day = 171 days after Jan 1
+num_days <- nrow(ARIMA_ag_df_phy_pred)
+
+ARIMA_ag_df_phy_pred$date <- seq(from = start_date, by = "day", length.out = num_days)
+
+# Print result
+print(ARIMA_ag_df_phy_pred)
+
+all_ARIMA_ag_df_phy_pred <- left_join(ag_df_CR, ARIMA_ag_df_phy_pred, by = "date")
+
+all_ARIMA_ag_df_phy_pred <- na.omit(all_ARIMA_ag_df_phy_pred)
+
+ARIMA_ag_df_phy_pred_results <- ComputeError(all_ARIMA_ag_df_phy_pred$phy, all_ARIMA_ag_df_phy_pred$forecast_phy )
+
+ARIMA_ag_df_phy_pred_results$rho #ARIMA RESULTS 2023
+
+rho_ARIMA_max <- ARIMA_ag_df_phy_pred_results$rho
+
+ag_df_CR <- na.omit(ag_df_CR)
+
+```
+
+## Univar Comparision
+
+### Simplex - Find Optimal E
+```{r}
+
+library(rEDM)
+
+#UniVariate
+
+ag_df_CR <- na.omit(ag_df_CR)
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+tau_i <- 7 #Days out
+
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
+lib_oos <- c(1199,1374) # Pred
+
+
+#SELECT E - SIMPLEX
+
+Simplex_phy_tau7_E <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i, maxE = 20, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+print(Simplex_phy_tau7_E[which.max(Simplex_phy_tau7_E$rho), ])
+
+# E       rho
+# 3 3 0.4036392
+
+#Simplex_phy_tau7_E <- saveRDS(Simplex_phy_tau7_E, file = "Simplex_phy_tau7_E.rds")
+
+
+
+```
+
+### Simplex - Select Theta No Ex
 
 ```{r}
-ARIMA_ag_df_phy_pred_results$rho
+#SELECT THETA
+
+#w/o exclusion radius
+
+Simplex_phy_tau7_theta <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                                    E=3,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, 
+
+print(Simplex_phy_tau7_theta[which.max(Simplex_phy_tau7_theta$rho), ])
+
+
+#Theta       rho
+#1  0.01 0.4907777
+
+
+#Simplex_phy_tau7_theta <- saveRDS(Simplex_phy_tau7_theta, file = "Simplex_phy_tau7_theta.rds")
+
+
+
+
+```
+
+
+### Simplex - Eval Exclusion Radius
+```{r}
+
+tau_i <- 7 #Days out
+
+lib_ins <- c(1,1197) # data up through end of 2022; this is the training set
+lib_oos <- c(1198,1374) # Pred
+
+library(rEDM)
+
+#HELPER FUNCTION
+
+eval_ex_radius <- function(dataFrame, columns, target, E, tau_i, lib_ins, lib_oos) {
+  
+  # Create an empty list to store results
+  results_list <- list()
+  
+  # Loop over exclusionRadius values from 1 to 10
+  for (ex_radius in 1:10) { #choose ex values
+    
+    tryCatch({
+      result <- PredictNonlinear(
+        dataFrame = dataFrame,
+        columns = columns,
+        target = target,
+        E = E,
+        tau = -tau_i,  
+        Tp = tau_i,
+        exclusionRadius = ex_radius,
+        lib = lib_ins,
+        pred = lib_oos,
+        showPlot = FALSE
+      )
+      
+      # Add exclusionRadius info
+      result$exclusionRadius <- ex_radius
+      
+      # Store result
+      results_list[[ex_radius]] <- result
+      
+    }, error = function(e) {
+      # If error happens, store NA and print warning
+      message(sprintf("Error at exclusionRadius = %d: %s", ex_radius, e$message))
+      results_list[[ex_radius]] <- NA
+    })
+    
+  }
+  
+  # Remove any NA results
+  results_list_clean <- results_list[!sapply(results_list, is.na)]
+  
+  # Combine into a single dataframe
+  if (length(results_list_clean) > 0) {
+    results_select_ex <- do.call(rbind, results_list_clean)
+  } else {
+    results_select_ex <- data.frame()
+  }
+  
+  return(results_select_ex)
+}
+
+eval_ex_radius_results <- eval_ex_radius(
+  dataFrame = ag_df_CR,
+  columns = "phy",
+  target = "phy",
+  E = 3,
+  tau_i = tau_i,
+  lib_ins = lib_ins,
+  lib_oos = lib_oos
+)
+
+print(eval_ex_radius_results[which.max(eval_ex_radius_results$rho), ])
+
+# Theta       rho exclusionRadius
+# 1  0.01 0.4907777               1
+
+
+```
+
+
+### Smap - Make Predictions
+
+
+```{r}
+
+#PREDICT - SMAP
+
+Smap_phy_tau7 <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_oos, E=3,theta=0, tau = -tau_i, Tp = tau_i)
+
+ Smap_phy_tau7_results <- as.data.frame(Smap_phy_tau7[["predictions"]])
+
+
+rho_univar <- ComputeError(Smap_phy_tau7$predictions$Observations,
+                        Smap_phy_tau7$predictions$Predictions)
+rho_univar_max <- print(rho_univar)
+
+rho_univar_max <- rho_univar$rho
+
+```
+
+### Linear Regression (AR(1))
+
+```{r}
+
+# we can use S-map with E=1 and theta=0 to get the AR(1) forecast skill
+
+AR1 <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_oos, E=1,theta=0,tau=-tau_i,Tp=tau_i) #lib train, #pred is pred 
+
+rho_AR1 <- ComputeError(AR1$predictions$Observations,
+                        AR1$predictions$Predictions)
+
+rho_AR1_max <- print(rho_AR1$rho)
+rho_AR1_max <- rho_AR1$rho
+
+
+```
+
+
+### Univar Histogram 
+
+```{r}
+Univar_rho_df <- data_frame(
+
+rho_AR1_max,
+rho_univar_max,
+rho_ARIMA_max,
+)
+
+univar_rho <- tibble(
+  name = c("Linear Regression (AR1)", "S-map", "ARIMA"),
+  value = c(rho_AR1_max, rho_univar_max, rho_ARIMA_max)
+)
+
+# Make a bar plot
+ggplot(univar_rho, aes(x = name, y = value)) +
+  geom_col(fill = "steelblue") +
+  theme_minimal() +
+  labs(x = "Model", y = "Prediction Skill (p)", title = "Univariate Model Comparison")+
+  theme(plot.title = element_text(hjust = 0.5))  # Center the title
+
+
+
+```
+
+# Multivar Comparision
+
+## Mulitvariate
+
+
+### Simplex - Find Optimal E
+```{r}
+
+library(rEDM)
+
+#UniVariate
+
+ag_df_CR <- na.omit(ag_df_CR)
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+tau_i <- 7 #Days out
+
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
+lib_oos <- c(1199,1374) # Pred
+
+columns_i <- c( "chl" ,     "phy"   ,   "ph"   ,    "Celsius" , "spcond" ,  "do" ,      "turb"  ,   "Salinity" , "sin_season")
+
+
+#SELECT E - SIMPLEX
+
+Multi_Simplex_phy_tau7_E <- EmbedDimension(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+                        tau=-tau_i,Tp=tau_i, maxE = 20, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+print(Multi_Simplex_phy_tau7_E[which.max(Multi_Simplex_phy_tau7_E$rho), ])
+
+# E       rho
+# 3 3 0.4036392
+
+#Simplex_phy_tau7_E <- saveRDS(Simplex_phy_tau7_E, file = "Simplex_phy_tau7_E.rds")
+
+
+
+```
+
+### Simplex - Select Theta No Ex
+
+```{r}
+ag_df_CR <- na.omit(ag_df_CR)
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+tau_i <- 7 #Days out
+
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
+lib_oos <- c(1199,1374) # Pred
+
+columns_i <- c( "chl" ,     "phy"   ,   "ph"   ,    "Celsius" , "spcond" ,  "do" ,      "turb"  ,   "Salinity" , "sin_season")
+
+#SELECT THETA
+
+#w/o exclusion radius
+
+Multi_Simplex_phy_tau7_theta <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+                                    E=3,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, 
+
+print(Multi_Simplex_phy_tau7_theta[which.max(Multi_Simplex_phy_tau7_theta), ])
+
+
+#Theta       rho
+#1  0.01 0.4907777
+
+
+#Simplex_phy_tau7_theta <- saveRDS(Simplex_phy_tau7_theta, file = "Simplex_phy_tau7_theta.rds")
+
+
+
+
+```
+
+
+### Simplex - Eval Exclusion Radius
+```{r}
+
+tau_i <- 7 #Days out
+
+lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
+lib_oos <- c(1199,1374) # Pred
+
+library(rEDM)
+
+#HELPER FUNCTION
+
+Multi_eval_ex_radius_function <- function(dataFrame, columns_i, target, E, tau_i, lib_ins, lib_oos) {
+  
+  # Create an empty list to store results
+  results_list <- list()
+  
+  # Loop over exclusionRadius values from 1 to 10
+  for (ex_radius in 1:10) { #choose ex values
+    
+    tryCatch({
+      result <- PredictNonlinear(
+        dataFrame = dataFrame,
+        columns = columns_i,
+        target = target,
+        E = E,
+        tau = -tau_i,  
+        Tp = tau_i,
+        exclusionRadius = ex_radius,
+        lib = lib_ins,
+        pred = lib_oos,
+        showPlot = FALSE
+      )
+      
+      # Add exclusionRadius info
+      result$exclusionRadius <- ex_radius
+      
+      # Store result
+      results_list[[ex_radius]] <- result
+      
+    }, error = function(e) {
+      # If error happens, store NA and print warning
+      message(sprintf("Error at exclusionRadius = %d: %s", ex_radius, e$message))
+      results_list[[ex_radius]] <- NA
+    })
+    
+  }
+  
+  # Remove any NA results
+  results_list_clean <- results_list[!sapply(results_list, is.na)]
+  
+  # Combine into a single dataframe
+  if (length(results_list_clean) > 0) {
+    results_select_ex <- do.call(rbind, results_list_clean)
+  } else {
+    results_select_ex <- data.frame()
+  }
+  
+  return(results_select_ex)
+}
+
+Multi_eval_ex_radius_results <- Multi_eval_ex_radius_function(
+  dataFrame = ag_df_CR,
+  columns = "phy",
+  target = "phy",
+  E = 3,
+  tau_i = tau_i,
+  lib_ins = lib_ins,
+  lib_oos = lib_oos
+)
+
+print(Multi_eval_ex_radius_results[which.max(Multi_eval_ex_radius_results$rho), ])
+
+# Theta       rho exclusionRadius
+# 1  0.01 0.4907777               1
+
+
+```
+
+
+### Smap - Make Predictions
+
+
+```{r}
+
+#PREDICT - SMAP
+
+Multi_Smap_phy_tau7 <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+lib = lib_ins, pred = lib_oos, E=3,theta=0, tau = -tau_i, Tp = tau_i)
+
+Multi_Smap_phy_tau7_results <- as.data.frame(Smap_phy_tau7[["predictions"]])
+
+rho_multi <- ComputeError(Smap_phy_tau7$predictions$Observations,
+                        Smap_phy_tau7$predictions$Predictions)
+
+rho_multi_max <- print(rho_multi)
+
+rho_multi_max <- rho_multi$rho
+
+```
+
+
+### Multiview 
+
+```{r}
+
+
+  Multi_E2_D3_pred_rho <- ComputeError(Multi_E2_D3_pred_rho$predictions$Observations,
+                        Multi_E2_D3_pred_rho$predictions$Predictions)
+  
+  Multi_E3_D5_pred_rho <- ComputeError(Multi_E3_D5_pred_rho$predictions$Observations,
+                        Multi_E3_D5_pred_rho$predictions$Predictions)
+
+
+```
+
+
+
+#Multivariate Comparisions
+
+
+```{r}
+
+
+
+multi_rho <- tibble(
+  name = c("Linear Regression (AR1)", "S-map", "ARIMA", "Multivariate", "Multiview E2 D3","Multiview E3 D5"),
+  value = c(rho_AR1_max, rho_univar_max, rho_ARIMA_max, rho_multi_max, Multi_E2_D3_pred_rho, Multi_E3_D5_pred_rho  )
+)
+
+
+
+ggplot(multi_rho, aes(x = name, y = value)) +
+  geom_col(fill = "steelblue") +
+  theme_minimal() +
+  labs(x = "Model", y = "Prediction Skill (p)", title = "Multivariate Model Comparison")+
+  theme(plot.title = element_text(hjust = 0.5))  # Center the title
 
 
 
@@ -453,4 +1209,15 @@ ARIMA_ag_df_phy_pred_results$rho
 
 
 ```
+
+
+
+
+
+
+
+
+
+
+
 
