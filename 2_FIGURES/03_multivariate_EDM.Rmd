@@ -497,7 +497,30 @@ Multi_E3_D5_pred <- Multiview(dataFrame = ag_df_CR, lib = "1 1014", pred = "1 11
 
 saveRDS(Multi_E3_D5_obs, file = "Multi_E3_D5_obs.rds")
 saveRDS(Multi_E3_D5_pred, file = "Multi_E3_D5_pred.rds")
+
+```
+
+```{r}
+
+#post 2016 fix
+library(rEDM)
+library(tidyverse)
+
+  ag_df_CR$date <- as.Date(ag_df_CR$date)
   
+Multi_E3_D5_pred <- Multiview(dataFrame = ag_df_CR, lib = "1 1198
+", pred = "1 1339", E =3, D=5,
+                            columns = "chl phy ph Celsius spcond do turb Salinity sin_season", target = "phy")
+
+saveRDS(Multi_E3_D5_pred, file = "Multi_E3_D5_pred.rds")
+
+
+ 
+Multi_E2_D3_pred <- Multiview(dataFrame = ag_df_CR, lib = "1 1198
+", pred = "1 1339", E =2, D=3,
+                            columns = "chl phy ph Celsius spcond do turb Salinity sin_season", target = "phy")
+
+saveRDS(Multi_E2_D3_pred, file = "Multi_E2_D3_pred.rds")
 
 #```
 

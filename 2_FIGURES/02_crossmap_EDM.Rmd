@@ -225,9 +225,11 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
 })
 
-n500_results_surr_xmap <- results_surr_xmap
+results_surr_xmap2 <- results_surr_xmap
 
-#saveRDS(n500_results_surr_xmap, file = "n500_results_surr_xmap.rds" )
+n500_results_surr_xmap <- results_surr_xmap2
+
+saveRDS(n500_results_surr_xmap, file = "n500_results_surr_xmap.rds" )
 
 ```
 
@@ -235,24 +237,47 @@ n500_results_surr_xmap <- results_surr_xmap
 #Surr Test Table 
 ```{r}
 
-avg_n500_results_surr_xmap <- n500_results_surr_xmap %>%
-  group_by(target) %>%
-  summarise(
-    mean_MAE = mean(MAE, na.rm = TRUE),
-    mean_rho = mean(rho, na.rm = TRUE),
-    mean_RMSE = mean(RMSE, na.rm = TRUE)
-  )
-
 
 surrtable <- n1_results_surr_xmap %>%
   rowwise() %>%
   mutate(
-    Pvalue = mean(
+    Psurr = mean(
       n500_results_surr_xmap$rho[n500_results_surr_xmap$target == target] >= rho, #mean (psurr >= pmax)
       na.rm = TRUE
-    )
+    ) 
   ) %>%
-  ungroup()
+  ungroup()  %>%
+  select(-index, -MAE, -RMSE)
+
+
+
+# Compute correlation between rho and Psurr
+rho_psurr_corr <- cor(surrtable$rho, surrtable$Psurr, use = "complete.obs")
+
+# Add the correlation as a new column in every row
+surrtable <- surrtable %>%
+  mutate(correlation = rho_psurr_corr)
+
+
+
+
+
+# First, join the two datasets to get matching rho values
+joined_data <- n1_results_surr_xmap %>%
+  select(target, rho_n1 = rho) %>%
+  inner_join(n500_results_surr_xmap %>% select(target, rho_n500 = rho), by = "target")
+
+# Calculate correlation for each target
+correlations <- joined_data %>%
+  group_by(target) %>%
+  summarise(rho_correlation = cor(rho_n1, rho_n500))
+
+# Merge correlation into the original surrtable
+surrtable <- surrtable %>%
+  left_join(correlations, by = "target")
+
+
+
 
 
 n500_results_surr_xmap <- n500_results_surr_xmap %>%
