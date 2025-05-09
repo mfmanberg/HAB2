@@ -60,7 +60,7 @@ if (file.exists("critical.r .rds")) {
 lm_list <- list()
 
 # List of variables to include in the linear models
-vars <- c("ph", "Celsius", "spcond", "do", "turb", "Salinity")
+vars <- c("ph", "Celsius", "spcond", "do", "turb", "Salinity", "sin_season")
 
 # Iterate over each variable
 for (var in vars) {
@@ -133,7 +133,7 @@ print(results_df)
 
 ```
 
-## Print Talbe 
+## Print Table 
 ```{r}
 
 # install.packages("gridExtra")

@@ -8,6 +8,20 @@ editor_options:
     wrap: 72
 ---
 
+#LIBRARY 
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(oce)
+library(padr)
+library(rEDM)
+library(ggplot2)
+library(zoo)
+library(quantreg)
+
+```
+
 #List of all data
 
 ```{r}
@@ -83,8 +97,6 @@ All.CR_bacteria
 
 All.Var 
 
-    
-    
     
 ```
 
@@ -212,28 +224,10 @@ All.CR_nutrients
 
 ```
 
-```{r}
-library(tidyverse)
-library(googlesheets4)
-library(oce)
-library(padr)
-library(rEDM)
-library(ggplot2)
-library(zoo)
-library(quantreg)
 
-```
+# LOAD DATA
 
-#Vignette
-
-```{r}
-vignette('rEDM-tutorial')
-
-```
-
-###LOAD DATA
-
-##CR BUOY
+##HOURLY - "CRYEAR"
 
 ```{r}
 
@@ -371,7 +365,13 @@ df_CR <- df_CR %>%
          minute = pmin(minute(`time est`),minute(`time edt`),na.rm=T)) %>%
   select(date,hour,minute,chl=`chlorophyll (rfu)`,phy=`phycocyanin (rfu)`, ph=`ph`, Celsius =`temp c`,  spcond = `spcond (ms/cm)`, do = `do (mg/l)`,turb = `turbidity (fnu)` )
   
-  
+
+```
+
+#add salinity
+
+```{r}
+
 #%>% rename(`time est`=time)
 #Aggregate Values Daily
 df_CR$spcond = df_CR$spcond * 0.1 #mS to S/m
@@ -388,14 +388,27 @@ df_CR$Celsius,
 )
 
 if (file.exists("df_CR.rds")) {
-  # If it's saved locally, load the data
+  # If it's saved locally, load the data2
   df_CR <- readRDS("df_CR.rds")
 } else {
 saveRDS(df_CR, "df_CR.rds")
 }
 
+```
+
+#add seasonality
+
+```{r}
+
+
+
+
+
+
 
 ```
+
+
 
 #ag_df_CR
 
@@ -1612,3 +1625,5 @@ if (file.exists("All.Var.rds")) {
   
   
 ```
+
+#END 

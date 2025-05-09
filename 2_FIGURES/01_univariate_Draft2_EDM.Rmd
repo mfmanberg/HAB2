@@ -1079,7 +1079,7 @@ max_smap_phy_tau6 <- print(smapstats$rho)
 
 
 
-## UNI 7 DAYS/WEEKLY
+## UNI 7 DAYS/WEEKLY PHY 
 
 #### Data Config 7 DAYS
 
@@ -1103,12 +1103,10 @@ lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
 lib_oos <- c(1199,1374) # Pred
 
 
-
-
 ```
 
 
-#### Simplex - Find Optimal E 7 DAYS
+#### Simplex - Find Optimal E 7 DAYS PHY 
 ```{r}
 
 #SELECT E - SIMPLEX
@@ -1129,7 +1127,7 @@ max_simplex_phy_tau7
 
 ```
 
-#### SMap - Select Theta No Ex 7 DAYS
+#### SMap - Select Theta No Ex 7 DAYS PHY
 
 ```{r}
 
@@ -1155,7 +1153,7 @@ simplextheta <- best_simplex_theta_row$Theta
 ```
 
 
-#### SMap - Eval Exclusion Radius 7 DAYS - TO DO
+#### SMap - Eval Exclusion Radius 7 DAYS PHY - TO DO
 
 
 HELPER FUNCTION #ADD # here
@@ -1225,7 +1223,7 @@ simplexE_ex <- print(eval_ex_radius_results[which.max(eval_ex_radius_results$rho
 simplexE_ex <- simplexE_ex$rho
 
 
-#### Smap - Make Predictions 7 DAYS
+#### Smap - Make Predictions 7 DAYS PHY
 
 
 ```{r}
@@ -1247,7 +1245,6 @@ smapstats <- ComputeError(
 max_smap_phy_tau7 <- print(smapstats$rho)
 
 ```
-
 
 
 
@@ -2066,6 +2063,10 @@ pacf2021 <- morndf_CR %>%
   pull(phy) %>%
   pacf(lag.max= 14)
 plot(pacf2021, main = "Daily Phyocanin (RFU) PACF")
+
+
+
+
 ```
 
 ### MORN UNI 
@@ -2073,3 +2074,584 @@ plot(pacf2021, main = "Daily Phyocanin (RFU) PACF")
 
 
 #UNIVAR HIST ALL DF
+
+
+#PLOT SIMPLEX V. AR1
+
+
+### AR1
+
+```{r}
+#7 DAYS PHY
+
+lib_ins <- c(1,1198) 
+lib_oos <- c(1199,1374) # Pred
+columns_i <- "phy"
+target_i <- "phy"
+tau_i <- 7
+
+AR1 <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = target_i,
+lib = lib_ins, pred = lib_oos, E=1,theta=0,tau=-tau_i,Tp=tau_i, showPlot = FALSE) #lib train, #pred is pred 
+
+rho_AR1 <- ComputeError(AR1$predictions$Observations,
+                        AR1$predictions$Predictions)
+
+phy_max_ar1_phy_tau7 <- print(rho_AR1$rho)
+
+#7 DAYS CHL
+
+columns_i <- "chl"
+target_i <- "chl"
+
+
+AR1 <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = target_i,
+lib = lib_ins, pred = lib_oos, E=1,theta=0,tau=-tau_i,Tp=tau_i, showPlot = FALSE) #lib train, #pred is pred 
+
+rho_AR1 <- ComputeError(AR1$predictions$Observations,
+                        AR1$predictions$Predictions)
+
+chl_max_ar1_phy_tau7 <- print(rho_AR1$rho)
+
+#9:12 PHY
+
+lib_ins <- c(1,1198)#CHANGE
+lib_oos <- c(1199,1374) # CHANGE
+columns_i <- "phy"
+target_i <- "phy"
+tau_i <- 24  #168 Hours in 7 days / 3 hours (9-12)
+
+AR1 <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = target_i,
+lib = lib_ins, pred = lib_oos, E=1,theta=0,tau=-tau_i,Tp=tau_i, showPlot = FALSE) #lib train, #pred is pred 
+
+rho_AR1 <- ComputeError(AR1$predictions$Observations,
+                        AR1$predictions$Predictions)
+
+mornphy_max_ar1_phy_tau24 <- print(rho_AR1$rho)
+
+#9:12 CHL
+
+lib_ins <- c(1,1198)#CHANGE
+lib_oos <- c(1199,1374) # CHANGE
+columns_i <- "chl"
+target_i <- "chl"
+tau_i <- 24  #168 Hours in 7 days / 3 hours (9-12) per day
+
+AR1 <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = target_i,
+lib = lib_ins, pred = lib_oos, E=1,theta=0,tau=-tau_i,Tp=tau_i, showPlot = FALSE) #lib train, #pred is pred 
+
+rho_AR1 <- ComputeError(AR1$predictions$Observations,
+                        AR1$predictions$Predictions)
+
+mornphy_max_ar1_phy_tau24 <- print(rho_AR1$rho)
+
+
+```
+
+## UNI 7 DAYS/WEEKLY SIMPLEX
+
+```{r}
+
+
+#DAILY PHY SIMPLEX 
+
+library(rEDM)
+
+df <- ag_df_CR #dataframe
+lib_ins <- c(1,1198) 
+lib_oos <- c(1199,1374) 
+
+columns_i <- "phy"
+target_i <- "phy"
+tau_i <- 7 #Days out
+E <- 25
+
+
+#SIMPLEX 
+
+simplex_selectE <- EmbedDimension(dataFrame = df, columns = columns_i, target = target_i,
+ tau=-tau_i,Tp=tau_i, maxE = E, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_selectE_row <- simplex_selectE[which.max(simplex_selectE$rho), ]
+simplexE <- best_simplex_selectE_row$E
+
+
+#SMAP 
+
+simplex_pred <- PredictNonlinear(dataFrame = df, columns = columns_i, target = columns_i,
+ E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+simplextheta <- best_simplex_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_phy_tau7 <- best_simplex_selectE_row$rho 
+
+#SIMPLEX VALUES
+simplex_phy_tau7 <- simplex_selectE
+
+#MAX SMAP
+max_smap_phy_tau7 <- best_simplex_theta_row$rho 
+#SMAP VALUES
+smap_phy_tau7 <- simplex_pred
+
+
+
+
+#DAILY CHL SIMPLEX 
+
+library(rEDM)
+
+df <- ag_df_CR #dataframe
+lib_ins <- c(1,1198) #CHANGE 
+lib_oos <- c(1199,1374) #CHANGE
+
+
+
+columns_i <- "chl"
+target_i <- "chl"
+E <- 25
+tau_i <- 7 #Days out
+
+#SIMPLEX 
+
+simplex_selectE <- EmbedDimension(dataFrame = ag_df_CR, columns = columns_i, target = target_i,
+ tau=-tau_i,Tp=tau_i, maxE = E, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_selectE_row <- simplex_selectE[which.max(simplex_selectE$rho), ]
+simplexE <- best_simplex_selectE_row$E
+
+
+#SMAP 
+
+simplex_pred <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i, target = columns_i,
+ E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+simplextheta <- best_simplex_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_chl_tau7 <- best_simplex_selectE_row$rho 
+
+#SIMPLEX VALUES
+simplex_chl_tau7 <- simplex_selectE 
+
+#MAX SMAP
+max_smap_chl_tau7 <- best_simplex_theta_row$rho 
+#SMAP VALUES
+smap_chl_tau7 <- simplex_pred
+
+
+
+
+# 9 AM - 12 PM PHY
+
+
+df <- morndf_CR #dataframe
+lib_ins <- c(1,1198) #CHANGE 
+lib_oos <- c(1199,1374) #CHANGE
+
+
+columns_i <- "phy"
+target_i <- "phy"
+
+tau_i <- 24 #Days out
+E <- 25
+
+
+#SIMPLEX 
+
+simplex_selectE <- EmbedDimension(dataFrame = ag_df_CR, columns = columns_i, target = target_i,
+ tau=-tau_i,Tp=tau_i, maxE = E, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_selectE_row <- simplex_selectE[which.max(simplex_selectE$rho), ]
+simplexE <- best_simplex_selectE_row$E
+
+
+#SMAP 
+
+simplex_pred <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i, target = columns_i,
+ E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+simplextheta <- best_simplex_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_phy_morntau24 <- best_simplex_selectE_row$rho 
+
+#SIMPLEX VALUES
+simplex_phy_morntau24 <- simplex_selectE 
+
+#MAX SMAP
+max_smap_phy_morntau24 <- best_simplex_theta_row$rho 
+
+#SMAP VALUES
+smap_phy_morntau24 <- simplex_pred
+
+
+# 9 AM - 12 PM CHL
+
+
+df <- morndf_CR #dataframe
+lib_ins <- c(1,1198) #CHANGE 
+lib_oos <- c(1199,1374) #CHANGE
+
+columns_i <- "chl"
+target_i <- "chl"
+
+tau_i <- 24 #Days out
+E <- 25
+
+
+#SIMPLEX 
+
+simplex_selectE <- EmbedDimension(dataFrame = ag_df_CR, columns = columns_i, target = target_i,
+ tau=-tau_i,Tp=tau_i, maxE = E, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_selectE_row <- simplex_selectE[which.max(simplex_selectE$rho), ]
+simplexE <- best_simplex_selectE_row$E
+
+
+#SMAP 
+
+simplex_pred <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i, target = columns_i,
+ E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+simplextheta <- best_simplex_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_chl_morntau24 <- best_simplex_selectE_row$rho 
+
+#SIMPLEX VALUES
+simplex_chl_morntau24 <- simplex_selectE 
+
+#MAX SMAP
+max_smap_chl_morntau24 <- best_simplex_theta_row$rho 
+#SMAP VALUES
+smap_chl_morntau24 <- simplex_pred
+
+
+```
+
+
+
+```{r}
+
+
+#MAX SIMPLEX
+
+max_simplex_phy_tau7 
+
+max_simplex_chl_tau7 
+
+max_simplex_phy_morntau24 
+
+max_simplex_chl_morntau24
+
+#SIMPLEX VALUES
+
+simplex_phy_tau7  
+
+simplex_chl_tau7  
+
+simplex_phy_morntau24 
+
+simplex_chl_morntau24 
+
+
+#MAX SMAP
+max_smap_phy_tau7
+
+max_smap_chl_tau7  
+
+max_smap_phy_morntau24
+
+max_smap_chl_morntau24
+
+#SMAP VALUES
+
+smap_phy_tau7 
+
+smap_chl_tau7
+
+smap_phy_morntau24
+
+smap_chl_morntau24
+
+
+
+
+
+
+```
+
+#### PLOT SIMPLEX V. AR1 7 DAYS
+```{r}
+
+x_lim <- range(smap_phy_tau7$Theta)
+y_lim <- range(smap_phy_tau7$rho)
+y_padding <- 0.05 * diff(y_lim)
+
+
+# Plot with line and custom axes limits
+plot(x = smap_phy_tau7$Theta, 
+     y = smap_phy_tau7$rho,
+     type = "l", col = "lightblue", lwd = 2,
+     xlab = "Theta (localization parameter)", ylab = "Prediction Skill (ρ)",
+     main = "S-map V. AR(1) at 7 days",
+     xlim = c(min(x_lim), max(x_lim)),
+     ylim = c(min(y_lim) - y_padding, max(y_lim) + y_padding))
+
+
+lines( x = smap_chl_tau7$Theta, y = smap_chl_tau7$rho, col = "green" )
+lines(x = smap_phy_morntau24$Theta,  y = smap_phy_morntau24$rho, col = "red"   )
+lines(x = smap_chl_morntau24$E,   y = smap_chl_morntau24$rho, col = "orange" )
+
+
+abline(h = phy_max_ar1_phy_tau7, col = "darkblue", lty = 2)
+abline(h = chl_max_ar1_phy_tau7, col = "darkgreen", lty = 2)
+abline(h = mornphy_max_ar1_phy_tau24, col = "darkred", lty = 2)
+abline(h = mornchl_max_ar1_phy_tau24, col = "darkorange", lty = 2)
+
+# Add legend
+legend("bottomright", legend = 
+         c(
+  "Daily Phycocanin (RFU) S-Map Forecast", 
+   "Daily Phycocanin (RFU) AR(1)", 
+ "Daily Chlorophyll (RFU) S-Map Forecast",
+  "Daily Chlorophyll (RFU) AR(1)",
+  "9 AM - 12 PM Phycocanin (RFU) S-Map Forecast",
+  "9 AM - 12 PM Phycocanin (RFU) AR(1)",
+ "9 AM - 12 PM Chlorophyll (RFU) S-Map Forecast",
+ "9 AM - 12 PM Chlorophyll (RFU) AR(1)"
+ ),
+       col = c("lightblue", "darkblue", "green", "darkgreen", "red", "orange", "darkorange"), lty = c(1,2,1,2,1,2,1,2)) 
+
+```
+
+
+#### PLOT SMAP V. AR1 7 DAYS
+
+
+#### PLOT SMAP V. AR1 7 DAYS
+```{r}
+
+x_lim <- range(simplex_selectE$E)
+y_lim <- range(c(simplex_selectE$rho, max_ar1_phy_tau7))
+y_padding <- 0.05 * diff(y_lim)
+
+
+# Plot with line and custom axes limits
+plot(x = simplex_phy_tau7$E, 
+     y = simplex_phy_tau7$rho,
+     type = "l", col = "lightblue", lwd = 2,
+     xlab = "Embedding Dimension (E)", ylab = "Prediction Skill (ρ)",
+     main = "Simplex V. AR(1) at 7 days",
+     xlim = c(min(x_lim), max(x_lim)),
+     ylim = c(min(y_lim) - y_padding, max(y_lim) + y_padding))
+
+
+lines( x = simplex_chl_tau7$E, y = simplex_chl_tau7$rho, col = "green" )
+lines(x = max_simplex_phy_morntau24$E,
+  y = max_simplex_phy_morntau24$rho, col = "red"   )
+lines(x = max_simplex_chl_morntau24$E,
+  y = max_simplex_chl_morntau24$rho, col = "orange" )
+
+
+abline(h = phy_max_ar1_phy_tau7, col = "darkblue", lty = 2)
+abline(h = chl_max_ar1_phy_tau7, col = "darkgreen", lty = 2)
+abline(h = mornphy_max_ar1_phy_tau24, col = "darkred", lty = 2)
+abline(h = mornchl_max_ar1_phy_tau24, col = "darkorange", lty = 2)
+
+# Add legend
+legend("bottomright", legend = 
+         c(
+  "Daily Phycocanin (RFU) Simplex Forecast", 
+   "Daily Phycocanin (RFU) AR(1)", 
+ "Daily Chlorophyll (RFU) Simplex Forecast",
+  "Daily Chlorophyll (RFU) AR(1)",
+  "9 AM - 12 PM Phycocanin (RFU) Simplex Forecast",
+  "9 AM - 12 PM Phycocanin (RFU) AR(1)",
+ "9 AM - 12 PM Chlorophyll (RFU) Simplex Forecast",
+ "9 AM - 12 PM Chlorophyll (RFU) AR(1)"
+ ),
+       col = c("lightblue", "darkblue", "green", "darkgreen", "red", "orange", "darkorange"), lty = c(1,2,1,2,1,2,1,2)) 
+
+```
+
+
+
+#PLOT SMAP V. AR1
+
+
+
+#### SMap - Select Theta No Ex 7 DAYS
+
+```{r}
+
+#SELECT THETA
+
+#w/o exclusion radius
+
+simplex_pred <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                                    E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+
+simplextheta <- best_simplex_theta_row$Theta
+
+
+```
+
+
+#### SMap - Eval Exclusion Radius 7 DAYS - TO DO
+
+
+HELPER FUNCTION #ADD # here
+
+
+eval_ex_radius <- function(dataFrame, columns, target, E, tau_i, lib_ins, lib_oos) {
+  
+  # Create an empty list to store results
+  results_list <- list()
+  
+  # Loop over exclusionRadius values from 1 to 10
+  for (ex_radius in 1:10) { #choose ex values
+    
+    tryCatch({
+      result <- PredictNonlinear(
+        dataFrame = dataFrame,
+        columns = columns,
+        target = target,
+        E = E,
+        tau = -tau_i,  
+        Tp = tau_i,
+        exclusionRadius = ex_radius,
+        lib = lib_ins,
+        pred = lib_oos,
+        showPlot = FALSE
+      )
+      
+      # Add exclusionRadius info
+      result$exclusionRadius <- ex_radius
+      
+      # Store result
+      results_list[[ex_radius]] <- result
+      
+    }, error = function(e) {
+      # If error happens, store NA and print warning
+      message(sprintf("Error at exclusionRadius = %d: %s", ex_radius, e$message))
+      results_list[[ex_radius]] <- NA
+    })
+    
+  }
+  
+  # Remove any NA results
+  results_list_clean <- results_list[!sapply(results_list, is.na)]
+  
+  # Combine into a single dataframe
+  if (length(results_list_clean) > 0) {
+    results_select_ex <- do.call(rbind, results_list_clean)
+  } else {
+    results_select_ex <- data.frame()
+  }
+  
+  return(results_select_ex)
+}
+
+eval_ex_radius_results <- eval_ex_radius(
+  dataFrame = ag_df_CR,
+  columns = "phy",
+  target = "phy",
+  E = 5,
+  tau_i = tau_i,
+  lib_ins = lib_ins,
+  lib_oos = lib_oos
+)
+
+simplexE_ex <- print(eval_ex_radius_results[which.max(eval_ex_radius_results$rho), ])
+
+simplexE_ex <- simplexE_ex$rho
+
+
+#### Smap - Make Predictions 7 DAYS
+
+
+```{r}
+
+#PREDICT - SMAP
+
+smap_pred <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_oos, E=simplexE,theta= simplextheta, tau = -tau_i, Tp = tau_i)
+
+ smap_results <- as.data.frame(smap_pred[["predictions"]])
+
+
+smapstats <- ComputeError(
+                          smap_results$Observations,
+                       smap_results$Predictions)
+
+#RESULT: 
+
+max_smap_phy_tau7 <- print(smapstats$rho)
+
+```
+
+
+#### PLOT SIMPLEX V. AR1 7 DAYS
+
+```{r}
+
+# Determine zoomed out limits
+x_lim <- range(simplex_pred$Theta)
+y_lim <- range(c(simplex_pred$rho, max_ar1_phy_tau7))
+y_padding <- 0.05 * diff(y_lim)  # add 5% padding to y-axis
+
+
+#plot 
+plot(x = simplex_pred$Theta, y = simplex_pred$rho,
+     type = "l", col = "blue", lwd = 2,
+     xlab = "Theta (localization parameter)", ylab = "Prediction Skill (ρ)",
+     main = "S-Map V. AR(1) at 7 days, Embedding Dimension = 3",
+     xlim = c(min(x_lim), max(x_lim)),
+     ylim = c(min(y_lim) - y_padding, max(y_lim) + y_padding))
+abline(h = max_ar1_phy_tau7, col = "red", lty = 2)
+legend("bottomright", legend = c("S-Map Forecast", "AR(1)"),
+       col = c("blue", "red"), lty = c(1, 2), lwd = c(2, 1))
+
+
+```
+
+

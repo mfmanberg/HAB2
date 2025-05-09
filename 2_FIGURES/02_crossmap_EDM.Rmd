@@ -382,7 +382,8 @@ rather than refight value
 
 ```{r}
 tau_ccm <- 7
-#ph
+
+E_ccm <- 3
 
 critical.r <- function( n, alpha = .05 ) {
    df <- n - 2
@@ -391,152 +392,68 @@ critical.r <- function( n, alpha = .05 ) {
    return(critical.r)
 }
 
-cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1200 1300 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
+#ph
 
-ph.phy.corr <- cor(cmap.ph.phy)
-ph.phy.corr <- ph.phy.corr[1, 3]
-
+cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-tau_ccm, Tp = 0, columns = "ph", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1200 1300 1339", sample = 100, 
+                  # exclusionRadius = tau_ccm, 
+                   random = TRUE, showPlot = TRUE) 
 
 #CELSIUS
 
-cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
-
-Celsius.phy.corr <- cor(cmap.Celsius.phy)
-Celsius.phy.corr <- Celsius.phy.corr[1, 3]
-
-
-Celsius.phy.plot <- plot(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], type = "l",
-     main = "Celsius V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], col = "red")
-lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,2], col = "blue")
-abline(h = (abs(Celsius.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1374), col = "darkgreen", lty = 2)
-legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation", 
-                              "Critical Correlation"), 
-       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
-
+cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-tau_ccm, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, 
+                        #exclusionRadius = tau_ccm, 
+                        random = TRUE, showPlot = TRUE) 
 
 
 #Celsius 
-cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
+cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-tau_ccm, Tp = 0, columns = "Celsius", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100,
+                        #exclusionRadius = tau_ccm,
+                        random = TRUE, showPlot = TRUE) 
 
-Celsius.phy.corr <- cor(cmap.Celsius.phy)
-Celsius.phy.corr <- Celsius.phy.corr[1, 3]
-
-
-Celsius.phy.plot <- plot(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], type = "l",
-     main = "Celsius V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,3], col = "red")
-lines(x = cmap.Celsius.phy[,1], y = cmap.Celsius.phy[,2], col = "blue")
-abline(h = (abs(Celsius.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1374), col = "darkgreen", lty = 2)
-legend("topright", legend = c(colnames(cmap.Celsius.phy)[2:3], "Correlation", 
-                              "Critical Correlation"), 
-       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
 
 
 #spcond
 
-cmap.spcond.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
+cmap.spcond.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-tau_ccm, Tp = 0, columns = "spcond", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, 
+                    #   exclusionRadius = tau_ccm, 
+                       random = TRUE, showPlot = TRUE) 
 
-spcond.phy.corr <- cor(cmap.spcond.phy)
-spcond.phy.corr <- spcond.phy.corr[1, 3]
-
-spcond.phy.plot <- plot(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,3], type = "l",
-     main = "Specific Conductivity V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-lines(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,3], col = "red")
-lines(x = cmap.spcond.phy[,1], y = cmap.spcond.phy[,2], col = "blue")
-abline(h = (abs(spcond.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1374), col = "darkgreen", lty = 2)
-legend("topright", legend = c(colnames(cmap.spcond.phy)[2:3], "Correlation", 
-                              "Critical Correlation"), 
-       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
 
 
 #do 
-cmap.do.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "do", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
-
-do.phy.corr <- cor(cmap.do.phy)
-do.phy.corr <- do.phy.corr[1, 3]
-
-
-do.phy.plot <- plot(x = cmap.do.phy[,1], y = cmap.do.phy[,3], type = "l",
-     main = "Dissolved Oxygen V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-lines(x = cmap.do.phy[,1], y = cmap.do.phy[,3], col = "red")
-lines(x = cmap.do.phy[,1], y = cmap.do.phy[,2], col = "blue")
-abline(h = (abs(do.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1374), col = "darkgreen", lty = 2)
-legend("topright", legend = c(colnames(cmap.do.phy)[2:3], "Correlation", 
-                              "Critical Correlation"), 
-       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
-
+cmap.do.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-tau_ccm, Tp = 0, columns = "do", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", 
+                   sample = 100,
+                 #  exclusionRadius = tau_ccm, 
+                   random = TRUE, showPlot = TRUE) 
 
 #TURB
 
-
-cmap.turb.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
-
-turb.phy.corr <- cor(cmap.turb.phy)[1, 3]
-
-
-turb.phy.plot <- plot(x = cmap.turb.phy[,1], y = cmap.turb.phy[,3], type = "l",
-     main = "Turbidity V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-lines(x = cmap.turb.phy[,1], y = cmap.turb.phy[,3], col = "red")
-lines(x = cmap.turb.phy[,1], y = cmap.turb.phy[,2], col = "blue")
-abline(h = (abs(turb.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1374), col = "darkgreen", lty = 2)
-legend("topright", legend = c(colnames(cmap.turb.phy)[2:3], "Correlation", 
-                              "Critical Correlation"), 
-       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
-
+cmap.turb.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-tau_ccm, Tp = 0, columns = "turb", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, 
+                    # exclusionRadius = tau_ccm, 
+                     random = TRUE, showPlot = TRUE) 
 
 
 #SALINITY
 
-cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-tau_ccm, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
+cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-tau_ccm, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100,
+                       #  exclusionRadius = tau_ccm,
+                         random = TRUE, showPlot = TRUE) 
 
-cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = 4, tau=-tau_ccm, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 100 200 400 600 1000", sample = 10, 
-                         includeData = TRUE,
-                         exclusionRadius = tau_ccm, random = TRUE, showPlot = TRUE) 
-
-Salinity.phy.corr <- cor(cmap.Salinity.phy)
-Salinity.phy.corr <- Salinity.phy.corr[1, 3]
-
-
-Salinity.phy.plot <- plot(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,3], type = "l",
-     main = "Salinity V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-lines(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,3], col = "red")
-lines(x = cmap.Salinity.phy[,1], y = cmap.Salinity.phy[,2], col = "blue")
-abline(h = (abs(Salinity.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1374), col = "darkgreen", lty = 2)
-legend("topright", legend = c(colnames(cmap.Salinity.phy)[2:3], "Correlation", 
-                              "Critical Correlation"), 
-       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
+cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-tau_ccm, Tp = 0, columns = "Salinity", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100,
+                      #   exclusionRadius = tau_ccm, 
+                         random = TRUE, showPlot = TRUE) 
 
 #sin_season
 
-cmap.sin_season.phy <- CCM(dataFrame = ag_df_CR, E = 6, tau=-7, Tp = 0, columns = "sin_season", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, exclusionRadius = tau_i, random = TRUE, showPlot = TRUE) 
-
-sin_season.phy.corr <- cor(cmap.sin_season.phy)
-sin_season.phy.corr <- sin_season.phy.corr[1, 3]
-
-
-sin_season.phy.plot <- plot(x = cmap.sin_season.phy[,1], y = cmap.sin_season.phy[,3], type = "l",
-     main = "sin_season V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-lines(x = cmap.sin_season.phy[,1], y = cmap.sin_season.phy[,3], col = "red")
-lines(x = cmap.sin_season.phy[,1], y = cmap.sin_season.phy[,2], col = "blue")
-abline(h = (abs(sin_season.phy.corr)), col = "green", lty = 2)
-abline(h = critical.r(1374), col = "darkgreen", lty = 2)
-legend("topright", legend = c(colnames(cmap.sin_season.phy)[2:3], "Correlation", 
-                              "Critical Correlation"), 
-       col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
-
+cmap.sin_season.phy <- CCM(dataFrame = ag_df_CR, E = E_ccm, tau=-7, Tp = 0, columns = "sin_season", target = "phy", libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, 
+                          # exclusionRadius = tau_i, 
+                           random = TRUE, showPlot = TRUE) 
 
 
 ```
 
 
-#CCM Helper Function
+#CCM Helper Function - Plot
 
 
 ```{r}
@@ -555,7 +472,7 @@ library(rEDM)
 plot_ccm_result <- function(cmap_result, var_name, target_name = "Phycocanin (RFU)", corr_value, critical_corr, 
                             ylim_vals = c(0, 1), legend_labels = NULL, legend_colors = NULL, legend_lty = NULL) {
   # Custom tick setup
-  lib_ticks <- c(20, 40, 60, 80, 100, 200, 400, 600, 800, 1000, 1169)
+  lib_ticks <- c(20, 40, 60, 80, 100, 200, 400, 600, 800, 1000, 1100, 1200, 1300, 1339)
   sqrt_ticks <- sqrt(lib_ticks)
 
   # Prepare x
@@ -584,70 +501,142 @@ plot_ccm_result <- function(cmap_result, var_name, target_name = "Phycocanin (RF
   }
 }
 
+
+#Pull Corr function 
+
+pull_corr <- function(data, predictor) {
+  # Create the formula
+  formula <- as.formula(paste("phy ~", predictor))
+  
+  # Fit the linear model
+  model <- lm(formula, data = data)
+  
+  # Extract R-squared from the summary
+  r_squared <- summary(model)$r.squared
+  
+  # Calculate correlation (R) from R-squared
+  r <- sqrt(r_squared)
+  
+  # If the slope is negative, make R negative
+  if (coef(model)[2] < 0) {
+    r <- -r
+  }
+  
+  return(r)
+}
+
+
+
 # Call the helper function
 
 #pH
 
-plot_ccm_result(cmap.ph.phy, "ph", corr_value = ph.phy.corr, critical_corr = critical.r(1374), 
+plot_ccm_result(cmap.ph.phy, "ph", corr_value = pull_corr(ag_df_CR, "ph"), critical_corr = critical.r(1374), 
                 legend_labels = c("ph:Phycocanin", "Phycocanin:ph", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
-
-
-
+legend("topright", 
+       inset = c(-0.2, 0), 
+       xpd = TRUE, 
+       legend = legend_labels,
+       col = legend_colors, 
+       lty = legend_lty,
+       bty = "n")
 
 #TEMPERATURE
 
 
-
-plot_ccm_result(cmap.Celsius.phy, "Temperature (°C)", corr_value = Celsius.phy.corr, critical_corr = critical.r(1374), 
+plot_ccm_result(cmap.Celsius.phy, "Temperature (°C)", corr_value = pull_corr(ag_df_CR, "Celsius"), critical_corr = critical.r(1374), 
                 legend_labels = c("Celsius:Phycocanin", "Phycocanin:Celsius", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
+legend("topright", 
+       inset = c(-0.2, 0), 
+       xpd = TRUE, 
+       legend = legend_labels,
+       col = legend_colors, 
+       lty = legend_lty,
+       bty = "n")
                                                                                      
                                                                                                                      
 # SPECIFIC CONDUCTIVITY  V. Phyocanin (RFU)
 
 plot_ccm_result(cmap.spcond.phy, "Specific Conductivity (mS/cm)", 
-                corr_value = spcond.phy.corr, 
+                corr_value = pull_corr(ag_df_CR, "spcond"), 
                 critical_corr = critical.r(1374),
                 legend_labels = c("Specific Conductivity:Phycocanin", "Phycocanin:Specific Conductivity", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
+legend("topright", 
+       inset = c(-0.2, 0), 
+       xpd = TRUE, 
+       legend = legend_labels,
+       col = legend_colors, 
+       lty = legend_lty,
+       bty = "n")
 
 #DISSOLVED OXYGEN
 
 plot_ccm_result(cmap.do.phy, "Dissolved Oxygen (mg/L)", 
-                corr_value = do.phy.corr, 
+                corr_value = pull_corr(ag_df_CR, "do"), 
                 critical_corr = critical.r(1374),
                 legend_labels = c("Dissolved Oxygen:Phycocanin", "Phycocanin:Dissolved Oxygen", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
+legend("topright", 
+       inset = c(-0.2, 0), 
+       xpd = TRUE, 
+       legend = legend_labels,
+       col = legend_colors, 
+       lty = legend_lty,
+       bty = "n")
+
 
 #TURBIDITY
 plot_ccm_result(cmap.turb.phy, "Turbidity (FNU)", 
-                corr_value = turb.phy.corr, 
+                corr_value = pull_corr(ag_df_CR, "turb"), 
                 critical_corr = critical.r(1374),
                 legend_labels = c("Turbidity:Phycocanin", "Phycocanin:Turbidity", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
+legend("topright", 
+       inset = c(-0.2, 0), 
+       xpd = TRUE, 
+       legend = legend_labels,
+       col = legend_colors, 
+       lty = legend_lty,
+       bty = "n")
 
 # SALINITY
 plot_ccm_result(cmap.Salinity.phy, "Practical Salinity (S/m)", 
-                corr_value = Salinity.phy.corr, 
+                corr_value = pull_corr(ag_df_CR, "Salinity"),
                 critical_corr = critical.r(1374),
                 legend_labels = c("Salinity:Phycocanin", "Phycocanin:Salinity", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
+legend("topright", 
+       inset = c(-0.2, 0), 
+       xpd = TRUE, 
+       legend = legend_labels,
+       col = legend_colors, 
+       lty = legend_lty,
+       bty = "n")
 
 #SIN_SEASON 
 
-plot_ccm_result(cmap.sin_season.phy, "Seasonality (days)", 
-                corr_value = sin_season.phy.corr, 
+plot_ccm_result(cmap.sin_season.phy, "Seasonality (Days)", 
+                corr_value = pull_corr(ag_df_CR, "sin_season"), 
                 critical_corr = critical.r(1374),
                 legend_labels = c("Seasonality:Phycocanin", "Phycocanin:Seasonality", "Correlation", "Critical Correlation"),
                 legend_colors = c("blue", "red", "green", "darkgreen"),
                 legend_lty = c(1, 1, 2, 2))
+legend("topright", 
+       inset = c(-0.2, 0), 
+       xpd = TRUE, 
+       legend = legend_labels,
+       col = legend_colors, 
+       lty = legend_lty,
+       bty = "n")
 
 ```
 

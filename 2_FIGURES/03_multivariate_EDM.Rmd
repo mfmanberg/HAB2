@@ -12,7 +12,6 @@ editor_options:
 
 # EDM Mulit-variate Analysis 
 
-#Multi Smap
 
 #Library
 ```{r}
@@ -22,142 +21,357 @@ library(tidyverse)
 
 ```
 
-#Option 1: highlighting nonlinearity test in-sample 
-
-## Univar 
-
-```{r}
-
-#SETTINGS 
-
-tau_i <- 7
-
-lib_ins <- c(1,1014) # data up through end of 2022; this is the training set
-lib_oos <- c(1025,1189) # leave this alone until we're nearly done with the project
 
 
-#SELECT E
-rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
-                        tau=-tau_i,Tp=tau_i,
-lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+# Multivariate 
 
+## KITCHEN SINK 7 DAYS/WEEKLY
 
-
-#SELECT THETA
-rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "phy",
-                                    E=3,
-                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
-                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, 
-#PREDICT 
-
-preds_AR <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
-lib = lib_ins, pred = lib_ins, E=3,theta=8) #lib train, #pred is pred 
-
-stats_AR <- ComputeError(preds_AR$predictions$Observations,
-                         preds_AR$predictions$Predictions)
-
-Univar <- data.frame(
-  phy = preds_AR$predictions$Predictions,
-  date = preds_AR$predictions$date
-)
-
-
-```
-
-
-
-## Multivar 
+#### Data Config 7 DAYS KITCHEN SINK
 
 ```{r}
 
+tau_i <- 7 #Days out
 
-#SELECT E
-rho_E_tau_i_0 <- EmbedDimension(dataFrame = ag_df_CR, columns = "chl", target = "chl",
-                        tau=-tau_i,Tp=tau_i,
-lib = lib_ins, pred = lib_ins, showPlot = TRUE) #lib train, #pred is pred 
+library(rEDM)
+
+#UniVariate
+
+ag_df_CR <- na.omit(ag_df_CR)
+ag_df_CR$date <- as.Date(ag_df_CR$date)
 
 
-#2) multi w/ all var
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
+lib_oos <- c(1199,1374) # Pred
 
 columns_i <- c( "chl" ,     "phy"   ,   "ph"   ,    "Celsius" , "spcond" ,  "do" ,      "turb"  ,   "Salinity" , "sin_season")
 
-rho_theta_tau_i <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i , target = "phy",
-                                    E=3,
-                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
-                                    lib = lib_ins, pred = lib_ins, showPlot = TRUE, embedded = TRUE) #lib train, #pred is pred 
-
- 
-
-
-preds_AR <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
-lib = lib_ins, pred = lib_ins, E=3,theta=8) #lib train, #pred is pred 
-
-stats_AR <- ComputeError(preds_AR$predictions$Observations,
-                         preds_AR$predictions$Predictions)
-
-Multivar <- data.frame(
-  phy = preds_AR$predictions$Predictions,
-  date = preds_AR$predictions$date
-)
-
-
-    if(file.exists("Multi_E3_D5.rds")) {
-  # Load the file if it exists
-  multivar <- readRDS("multivar.rds")
-} else {
-  # Save to file
-  saveRDS(multivar, "multivar.rds") }
-
-    
-    
-    
-#3) multiview
-
-
-Multi_E2_D3    #.rds
-
-Multi_E2_D5 <- Mutliview_E2D5
-  
-Multi_E3_D5 <- readRDS("Multiview_E3D5.rds")
-
-  
-    save(Multi_E2_D5, file = "Multi_E2_D5.rds")
-
-
-plot(Mutliview_E2D5)
-
-print(Mutliview_E2D5$View$rho)
-
-#plot
-plot(x = rho_theta_tau_i$Theta, y = rho_theta_tau_i$rho, type = "l",
-     main = "Nonlinear Tests", xlab = "Theta", ylab = "Rho", col = "blue", ylim = c(0, 1))
-
-lines(x = multivar$Theta, y = multivar$rho, col = "red")
-
-abline(h = max(Multi_E2_D5$View$rho), col = "green", lty = 2)
-
-legend("topright", 
-       legend = c("Univariate S-map", "Multivariate S-map", "Multiview"),
-       col = c("blue", "red", "green"), 
-       lty = c(1, 1, 2))
 
 
 ```
+
+
+#### Simplex - Find Optimal E 7 DAYS KITCHEN SINK
+```{r}
+
+#SELECT E - SIMPLEX
+
+simplex_selectE <- EmbedDimension(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+                        tau=-tau_i,Tp=tau_i, maxE = 25, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_selectE_row <- simplex_selectE[which.max(simplex_selectE$rho), ]
+simplexE <- best_simplex_selectE_row$E
+
+
+max_simplex_phy_tau7 <-best_simplex_selectE_row$rho
+
+
+KS_max_simplex_phy_tau7 <- max_simplex_phy_tau7
+ 
+
+```
+
+#### SMap - Select Theta No Ex 7 DAYS KITCHEN SINK
+
+```{r}
+
+#SELECT THETA
+
+#w/o exclusion radius
+
+simplex_pred <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+                                    E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE, embedded = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+
+simplextheta <- best_simplex_theta_row$Theta
+
+```
+
+
+#### SMap - Eval Exclusion Radius 7 DAYS  KITCHEN SINK - TO DO
+
+
+HELPER FUNCTION #ADD # here
+
+
+eval_ex_radius <- function(dataFrame, columns, target, E, tau_i, lib_ins, lib_oos) {
+  
+  # Create an empty list to store results
+  results_list <- list()
+  
+  # Loop over exclusionRadius values from 1 to 10
+  for (ex_radius in 1:10) { #choose ex values
+    
+    tryCatch({
+      result <- PredictNonlinear(
+        dataFrame = dataFrame,
+        columns = columns,
+        target = target,
+        E = E,
+        tau = -tau_i,  
+        Tp = tau_i,
+        exclusionRadius = ex_radius,
+        lib = lib_ins,
+        pred = lib_oos,
+        showPlot = FALSE
+      )
+      
+      # Add exclusionRadius info
+      result$exclusionRadius <- ex_radius
+      
+      # Store result
+      results_list[[ex_radius]] <- result
+      
+    }, error = function(e) {
+      # If error happens, store NA and print warning
+      message(sprintf("Error at exclusionRadius = %d: %s", ex_radius, e$message))
+      results_list[[ex_radius]] <- NA
+    })
+    
+  }
+  
+  # Remove any NA results
+  results_list_clean <- results_list[!sapply(results_list, is.na)]
+  
+  # Combine into a single dataframe
+  if (length(results_list_clean) > 0) {
+    results_select_ex <- do.call(rbind, results_list_clean)
+  } else {
+    results_select_ex <- data.frame()
+  }
+  
+  return(results_select_ex)
+}
+
+eval_ex_radius_results <- eval_ex_radius(
+  dataFrame = ag_df_CR,
+  columns = "phy",
+  target = "phy",
+  E = 5,
+  tau_i = tau_i,
+  lib_ins = lib_ins,
+  lib_oos = lib_oos
+)
+
+simplexE_ex <- print(eval_ex_radius_results[which.max(eval_ex_radius_results$rho), ])
+
+simplexE_ex <- simplexE_ex$rho
+
+
+#### Smap - Make Predictions 7 DAYS KITCHEN SINK
 
 
 ```{r}
 
-#out of sample time series of predicted vs observed 
+#PREDICT - SMAP
+
+smap_pred <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+lib = lib_ins, pred = lib_oos, E=simplexE,theta= simplextheta, tau = -tau_i, Tp = tau_i,
+embedded = TRUE)
+
+ smap_results <- as.data.frame(smap_pred[["predictions"]])
 
 
-#The WHO found that cyanobacterial cell concentrations above 20,000 cells per ml are associated with “short term adverse health outcomes.
+smapstats <- ComputeError(
+                          smap_results$Observations,
+                       smap_results$Predictions)
 
-#a chlorophyll concentration of less than 10 μg/L is expected to correspond to a low probability of adverse health effects
+#RESULT: 
 
+max_smap_phy_tau7 <- print(smapstats$rho)
+
+KS_max_smap_phy_tau7 <- max_smap_phy_tau7
+
+
+```
+
+
+
+
+# Multivariate 
+
+## MULTI 7 DAYS/WEEKLY
+
+#### Data Config 7 DAYS MULTI
+
+```{r}
+
+tau_i <- 7 #Days out
+
+library(rEDM)
+
+#UniVariate
+
+ag_df_CR <- na.omit(ag_df_CR)
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
+lib_oos <- c(1199,1374) # Pred
+
+columns_i <- c("Celsius" , "spcond" , "turb")
 
 
 
 ```
+
+
+#### Simplex - Find Optimal E 7 DAYS MULTI
+```{r}
+
+#SELECT E - SIMPLEX
+
+simplex_selectE <- EmbedDimension(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+                        tau=-tau_i,Tp=tau_i, maxE = 50, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_selectE_row <- simplex_selectE[which.max(simplex_selectE$rho), ]
+simplexE <- best_simplex_selectE_row$E
+
+
+max_simplex_phy_tau7 <-best_simplex_selectE_row$rho
+
+
+multi_max_simplex_phy_tau7 <- max_simplex_phy_tau7
+ 
+
+```
+
+#### SMap - Select Theta No Ex 7 DAYS MULTI
+
+```{r}
+
+#SELECT THETA
+
+#w/o exclusion radius
+
+simplex_pred <- PredictNonlinear(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+                                    E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE, embedded = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+
+simplextheta <- best_simplex_theta_row$Theta
+
+```
+
+
+#### SMap - Eval Exclusion Radius 7 DAYS  MULTI - TO DO
+
+
+HELPER FUNCTION #ADD # here
+
+
+eval_ex_radius <- function(dataFrame, columns, target, E, tau_i, lib_ins, lib_oos) {
+  
+  # Create an empty list to store results
+  results_list <- list()
+  
+  # Loop over exclusionRadius values from 1 to 10
+  for (ex_radius in 1:10) { #choose ex values
+    
+    tryCatch({
+      result <- PredictNonlinear(
+        dataFrame = dataFrame,
+        columns = columns,
+        target = target,
+        E = E,
+        tau = -tau_i,  
+        Tp = tau_i,
+        exclusionRadius = ex_radius,
+        lib = lib_ins,
+        pred = lib_oos,
+        showPlot = FALSE
+      )
+      
+      # Add exclusionRadius info
+      result$exclusionRadius <- ex_radius
+      
+      # Store result
+      results_list[[ex_radius]] <- result
+      
+    }, error = function(e) {
+      # If error happens, store NA and print warning
+      message(sprintf("Error at exclusionRadius = %d: %s", ex_radius, e$message))
+      results_list[[ex_radius]] <- NA
+    })
+    
+  }
+  
+  # Remove any NA results
+  results_list_clean <- results_list[!sapply(results_list, is.na)]
+  
+  # Combine into a single dataframe
+  if (length(results_list_clean) > 0) {
+    results_select_ex <- do.call(rbind, results_list_clean)
+  } else {
+    results_select_ex <- data.frame()
+  }
+  
+  return(results_select_ex)
+}
+
+eval_ex_radius_results <- eval_ex_radius(
+  dataFrame = ag_df_CR,
+  columns = "phy",
+  target = "phy",
+  E = 5,
+  tau_i = tau_i,
+  lib_ins = lib_ins,
+  lib_oos = lib_oos
+)
+
+simplexE_ex <- print(eval_ex_radius_results[which.max(eval_ex_radius_results$rho), ])
+
+simplexE_ex <- simplexE_ex$rho
+
+
+#### Smap - Make Predictions 7 DAYS MULTI
+
+
+```{r}
+
+#PREDICT - SMAP
+
+smap_pred <- SMap(dataFrame = ag_df_CR, columns = columns_i, target = "phy",
+lib = lib_ins, pred = lib_oos, E=simplexE,theta= simplextheta, tau = -tau_i, Tp = tau_i,
+embedded = TRUE)
+
+ smap_results <- as.data.frame(smap_pred[["predictions"]])
+
+
+smapstats <- ComputeError(
+                          smap_results$Observations,
+                       smap_results$Predictions)
+
+#RESULT: 
+
+max_smap_phy_tau7 <- print(smapstats$rho)
+
+multi_max_smap_phy_tau7 <- max_smap_phy_tau7
+
+
+```
+
 
 
 Next Steps
@@ -211,7 +425,7 @@ At least E of 2, after E \> 5 com sci problem
 
 
 
-```{r}
+#```{r}
 
 
 #Mutltiview
@@ -285,61 +499,447 @@ saveRDS(Multi_E3_D5_obs, file = "Multi_E3_D5_obs.rds")
 saveRDS(Multi_E3_D5_pred, file = "Multi_E3_D5_pred.rds")
   
 
-```
+#```
 
 
 
-#Option B:  time series of predicted and observed
+## UNI 7 DAYS/WEEKLY For Comparision
+
+#### Data Config 7 DAYS
 
 ```{r}
 
+tau_i <- 7 #Days out
 
-library(ggplot2)
+library(rEDM)
 
+#UniVariate
+
+ag_df_CR <- na.omit(ag_df_CR)
 ag_df_CR$date <- as.Date(ag_df_CR$date)
 
-ag_df_CR_obs <- ag_df_CR[ag_df_CR$date > as.Date("2022-12-31"), ]
 
-plot( x = ag_df_CR_obs$date, y = ag_df_CR_obs$phy)
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
 
+print(first_row_2023)
 
-# Plot observed phycocyanin
-pred_v_obs <- plot(x = ag_df_CR_obs$date, 
-     y = ag_df_CR_obs$phy, 
-     type = "l", 
-     col = "orange", 
-     main = "Predicted V. Observed Phycocanin", 
-     xlab = "Date", 
-     ylab = "Phycocanin (RFU)")
-
-# Add legend
-legend("topright", 
-       legend = "Phycocanin (RFU)", 
-       col = "orange", 
-       lty = 1)
+lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
+lib_oos <- c(1199,1374) # Pred
 
 
+```
 
-# 
-# cmap.ph.phy.plot <- plot(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], type = "l",
-#      main = "Ph V. phy ", xlab = "LibSize", ylab = "Rho", col = "blue",  ylim = c(0, 1))
-# lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,3], col = "red")
-# lines(x = cmap.ph.phy[,1], y = cmap.ph.phy[,2], col = "blue")
-# abline(h = (abs(ph.phy.corr)), col = "green", lty = 2)
-# abline(h = critical.r(1189), col = "darkgreen", lty = 2)
-# legend("topright", legend = c(colnames(cmap.ph.phy)[2:3], "Correlation", 
-#                               "Critical Correlation"), 
-#        col = c("blue", "red", "green","darkgreen"), lty = c(1, 1, 2,2))
-# 
 
+#### Simplex - Find Optimal E 7 DAYS
+```{r}
+
+#SELECT E - SIMPLEX
+
+simplex_selectE <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                        tau=-tau_i,Tp=tau_i, maxE = 20, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+
+best_simplex_selectE_row <- simplex_selectE[which.max(simplex_selectE$rho), ]
+simplexE <- best_simplex_selectE_row$E
+
+
+max_simplex_phy_tau7 <-best_simplex_selectE_row$rho
+
+max_simplex_phy_tau7
+
+```
+
+#### SMap - Select Theta No Ex 7 DAYS
+
+```{r}
+
+#SELECT THETA
+
+#w/o exclusion radius
+
+simplex_pred <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+                                    E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+
+simplextheta <- best_simplex_theta_row$Theta
+
+#RESULT: 
 
 
 
 ```
+
+
+#### SMap - Eval Exclusion Radius 7 DAYS - TO DO
+
+
+HELPER FUNCTION #ADD # here
+
+
+eval_ex_radius <- function(dataFrame, columns, target, E, tau_i, lib_ins, lib_oos) {
+  
+  # Create an empty list to store results
+  results_list <- list()
+  
+  # Loop over exclusionRadius values from 1 to 10
+  for (ex_radius in 1:10) { #choose ex values
+    
+    tryCatch({
+      result <- PredictNonlinear(
+        dataFrame = dataFrame,
+        columns = columns,
+        target = target,
+        E = E,
+        tau = -tau_i,  
+        Tp = tau_i,
+        exclusionRadius = ex_radius,
+        lib = lib_ins,
+        pred = lib_oos,
+        showPlot = FALSE
+      )
+      
+      # Add exclusionRadius info
+      result$exclusionRadius <- ex_radius
+      
+      # Store result
+      results_list[[ex_radius]] <- result
+      
+    }, error = function(e) {
+      # If error happens, store NA and print warning
+      message(sprintf("Error at exclusionRadius = %d: %s", ex_radius, e$message))
+      results_list[[ex_radius]] <- NA
+    })
+    
+  }
+  
+  # Remove any NA results
+  results_list_clean <- results_list[!sapply(results_list, is.na)]
+  
+  # Combine into a single dataframe
+  if (length(results_list_clean) > 0) {
+    results_select_ex <- do.call(rbind, results_list_clean)
+  } else {
+    results_select_ex <- data.frame()
+  }
+  
+  return(results_select_ex)
+}
+
+eval_ex_radius_results <- eval_ex_radius(
+  dataFrame = ag_df_CR,
+  columns = "phy",
+  target = "phy",
+  E = 5,
+  tau_i = tau_i,
+  lib_ins = lib_ins,
+  lib_oos = lib_oos
+)
+
+simplexE_ex <- print(eval_ex_radius_results[which.max(eval_ex_radius_results$rho), ])
+
+simplexE_ex <- simplexE_ex$rho
+
+
+#### Smap - Make Predictions 7 DAYS
+
+
+```{r}
+
+#PREDICT - SMAP
+
+smap_pred <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "phy",
+lib = lib_ins, pred = lib_oos, E=simplexE,theta= simplextheta, tau = -tau_i, Tp = tau_i)
+
+ smap_results <- as.data.frame(smap_pred[["predictions"]])
+
+
+smapstats <- ComputeError(
+                          smap_results$Observations,
+                       smap_results$Predictions)
+
+#RESULT: 
+
+max_smap_phy_tau7 <- print(smapstats$rho)
+
+```
+
+```{r}
+
+df_Multi_E2_D3_pred <- data.frame(Multi_E2_D3_pred$View)
+
+library(gridExtra)
+library(grid)
+
+png("df_Multi_E2_D3_pred.png", width = 1000, height = 700)
+grid.table(df_Multi_E2_D3_pred)
+dev.off()
+
+
+```
+
+
+
+
+# Multivariate Hist 
+
+```{r}
+
+library(tibble)
+library(ggplot2)
+
+
+Multi_E2_D3_rho <- ComputeError(
+  unlist(Multi_E2_D3_pred$Predictions$Observations),
+  unlist(Multi_E2_D3_pred$Predictions$Predictions)
+)
+Multi_E2_D3_rho <- Multi_E2_D3_rho$rho 
+
+# 
+# Multi_E3_D5_rho <- ComputeError(
+#   unlist(Multi_E3_D5_pred$Predictions$Observations),
+#   unlist(Multi_E3_D5_pred$Predictions )
+# )
+# Multi_E3_D5_rho <- Multi_E3_D5_rho$rho 
+
+
+# Model names
+model_names <- c(
+  "Univariate EDM 7 Day Simplex", "Univariate EDM 7 Day S-map",
+  "Multivaraite 'Kitchen Sink' 7 Day Simplex", "Multivaraite 'Kitchen Sink' 7 Day S-map",
+  "Multivaraite EDM 7 Day Simplex", "Multivariate EDM 7 Day S-map",
+  "Multiview: E = 2, D = 3"
+)
+
+# Corresponding broad categories
+model_type <- c(
+  "Univariate", "Univariate",
+  "Multivariate 'Kitchen Sink'", "Multivariate 'Kitchen Sink'",
+  "Multivariate", "Multivariate",
+  "Multiview"
+)
+
+# Create the tibble
+multi_daily_rho <- tibble(
+  name = factor(model_names, levels = model_names),
+  value = multi_rho_df$value,
+  model_type = factor(model_type, levels = c("Univariate", "Multivariate 'Kitchen Sink'", "Multivariate", "Multiview"))
+)
+
+# Plot
+ggplot(multi_daily_rho, aes(x = name, y = value, fill = model_type)) +
+  geom_col() +
+  scale_fill_manual(values = c( 
+    "Univariate" = "orange", 
+    "Multivariate 'Kitchen Sink'" = "darkorange",
+    "Multivariate" = "red",
+    "Multiview" = "darkred")) +
+  theme_minimal() +
+  labs(
+    x = "Model", 
+    y = "Prediction Skill (ρ)", 
+    title = "Phycocanin (RFU) Multivariate & Univariate EDM Model Comparison", 
+    fill = "Model Type"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    legend.position = "top"
+  )
+
+```
+
+#Option A:  
+
+#Option B:  time series of predicted and observed
+
+
+
 
 
 #END
 
+
+
+## UNI 7 DAYS/WEEKLY CHL
+
+#### Data Config 7 DAYS CHL
+
+```{r}
+
+tau_i <- 7 #Days out
+
+library(rEDM)
+
+#UniVariate
+
+ag_df_CR <- na.omit(ag_df_CR)
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+
+first_row_2023 <- which(format(ag_df_CR$date, "%Y") == "2023")[1]
+
+print(first_row_2023)
+
+lib_ins <- c(1,1198) # data up through end of 2022; this is the training set
+lib_oos <- c(1199,1374) # Pred
+
+
+```
+
+
+#### Simplex - Find Optimal E 7 DAYS CHL 
+```{r}
+
+#SELECT E - SIMPLEX
+
+simplex_selectE <- EmbedDimension(dataFrame = ag_df_CR, columns = "phy", target = "chl",
+                        tau=-tau_i,Tp=tau_i, maxE = 20, 
+lib = lib_ins, pred = lib_oos, showPlot = TRUE) #lib train, #pred is pred 
+
+
+
+best_simplex_selectE_row <- simplex_selectE[which.max(simplex_selectE$rho), ]
+simplexE <- best_simplex_selectE_row$E
+
+
+max_simplex_phy_tau7 <-best_simplex_selectE_row$rho
+
+chl_max_simplex_phy_tau7 <- max_simplex_phy_tau7
+
+chl_simplex_selectE_tau7 <- simplex_selectE
+
+```
+
+#### SMap - Select Theta No Ex 7 DAYS CHL
+
+```{r}
+
+#SELECT THETA
+
+#w/o exclusion radius
+
+simplex_pred <- PredictNonlinear(dataFrame = ag_df_CR, columns = "phy", target = "chl",
+                                    E= simplexE ,
+                                    tau=-tau_i,Tp=tau_i,#exclusionRadius = tau_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_simplex_theta_row <- print(simplex_pred[which.max(simplex_pred$rho), ])
+
+
+simplextheta <- best_simplex_theta_row$Theta
+
+#RESULT: 
+
+
+
+```
+
+
+#### SMap - Eval Exclusion Radius 7 DAYS PHY - TO DO
+
+
+HELPER FUNCTION #ADD # here
+
+
+eval_ex_radius <- function(dataFrame, columns, target, E, tau_i, lib_ins, lib_oos) {
+  
+  # Create an empty list to store results
+  results_list <- list()
+  
+  # Loop over exclusionRadius values from 1 to 10
+  for (ex_radius in 1:10) { #choose ex values
+    
+    tryCatch({
+      result <- PredictNonlinear(
+        dataFrame = dataFrame,
+        columns = columns,
+        target = target,
+        E = E,
+        tau = -tau_i,  
+        Tp = tau_i,
+        exclusionRadius = ex_radius,
+        lib = lib_ins,
+        pred = lib_oos,
+        showPlot = FALSE
+      )
+      
+      # Add exclusionRadius info
+      result$exclusionRadius <- ex_radius
+      
+      # Store result
+      results_list[[ex_radius]] <- result
+      
+    }, error = function(e) {
+      # If error happens, store NA and print warning
+      message(sprintf("Error at exclusionRadius = %d: %s", ex_radius, e$message))
+      results_list[[ex_radius]] <- NA
+    })
+    
+  }
+  
+  # Remove any NA results
+  results_list_clean <- results_list[!sapply(results_list, is.na)]
+  
+  # Combine into a single dataframe
+  if (length(results_list_clean) > 0) {
+    results_select_ex <- do.call(rbind, results_list_clean)
+  } else {
+    results_select_ex <- data.frame()
+  }
+  
+  return(results_select_ex)
+}
+
+eval_ex_radius_results <- eval_ex_radius(
+  dataFrame = ag_df_CR,
+  columns = "phy",
+  target = "phy",
+  E = 5,
+  tau_i = tau_i,
+  lib_ins = lib_ins,
+  lib_oos = lib_oos
+)
+
+simplexE_ex <- print(eval_ex_radius_results[which.max(eval_ex_radius_results$rho), ])
+
+simplexE_ex <- simplexE_ex$rho
+
+
+#### Smap - Make Predictions 7 DAYS PHY
+
+
+```{r}
+
+#PREDICT - SMAP
+
+smap_pred <- SMap(dataFrame = ag_df_CR, columns = "phy", target = "chl",
+lib = lib_ins, pred = lib_oos, E=simplexE,theta= simplextheta, tau = -tau_i, Tp = tau_i)
+
+ smap_results <- as.data.frame(smap_pred[["predictions"]])
+
+
+smapstats <- ComputeError(
+                          smap_results$Observations,
+                       smap_results$Predictions)
+
+#RESULT: 
+
+max_smap_phy_tau7 <- print(smapstats$rho)
+
+
+chl_smap_pred_tau7 <- smap_pred
+chl_max_smap_phy_tau7 <- chl_max_smap_phy_tau7
+
+
+```
 
 
 
