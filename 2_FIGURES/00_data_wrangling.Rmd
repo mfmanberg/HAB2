@@ -328,20 +328,63 @@ CR2016 <- read_sheet('https://docs.google.com/spreadsheets/d/1sMcEOIzxPTUZ93-pTJ
   saveRDS(CR2017, "CR2016.rds")
 }
 
-
-#CR2015
+# CR2015
 
 if (file.exists("CR2015.rds")) {
   # If it's saved locally, load the data
   CR2015 <- readRDS("CR2015.rds")
 } else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2015 <- read_sheet('https://docs.google.com/spreadsheets/d/1t5joquxku9OfQGDdsabp-GdR2sUw8hPDcwatC3SL90Q/edit?usp=sharing', sheet = 2)
-  saveRDS(CR2015, "CR2015.rds")
+  # Try loading from GitHub
+  tryCatch({
+    github_url <- "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/CR2015.rds"
+    CR2015 <- readRDS(url(github_url))
+    saveRDS(CR2015, "CR2015.rds")
+  }, error = function(e) {
+    # If GitHub load fails, fallback to Google Sheets
+    CR2015 <- read_sheet('https://docs.google.com/spreadsheets/d/1t5joquxku9OfQGDdsabp-GdR2sUw8hPDcwatC3SL90Q/edit?usp=sharing', sheet = 2)
+    saveRDS(CR2015, "CR2015.rds")
+  })
 }
 
 
 ```
+
+
+```{r}
+
+#CR2015
+
+   ## Define path
+local <- "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/CR2015.rds"
+github_url <- "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/CR2015.rds"
+  
+  if (file.exists(local_path)) {
+  # If it's saved locally, load the data
+  CR2015 <- readRDS(local_path)
+} else {
+  # Try loading from GitHub
+  tryCatch({
+    CR2015 <- readRDS(url(github_url))
+    saveRDS(CR2015, local_path)
+  }, error = function(e) {
+    # If GitHub load fails, fallback to Google Sheets
+    CR2015 <- read_sheet('https://docs.google.com/spreadsheets/d/1t5joquxku9OfQGDdsabp-GdR2sUw8hPDcwatC3SL90Q/edit?usp=sharing', sheet = 2)
+    saveRDS(CR2015, local_path)
+  })
+}
+
+   ## move path from environment
+
+rm(local, github_url) 
+
+
+
+```
+
+
+
+
+
 
 #df_CR
 
@@ -400,15 +443,89 @@ saveRDS(df_CR, "df_CR.rds")
 
 ```{r}
 
+# CYCLE
 
+cycle <- df_example
 
+if (file.exists("cycle.rds")) {
+  # If it's saved locally, load the data
+  cycle <- readRDS("cycle.rds")
+} else {
+  # If it's not saved locally, read it from Google Sheets and save it locally
+  saveRDS(cycle, "cycle.rds")
+}
 
+merged_df <- merge(ag_df_CR, cycle, by.x = "date", by.y = "Date", all.x = TRUE)
+
+ag_df_CR <- merged_df %>% select(-10)
+
+if (file.exists("ag_df_CR.rds")) {
+  # If it's saved locally, load the data
+  ag_df_CR <- readRDS("ag_df_CR.rds")
+} else {
+  saveRDS(ag_df_CR, "ag_df_CR.rds")
+}
 
 
 
 ```
 
+#Timeline - Sanity Check 
 
+```{r}
+
+#Timeline
+
+ag_df_CR <- ag_df_CR %>%
+  filter(!is.na(phy))  # Remove rows where 'phy' is NA
+
+#pad(cyano_ag_df_CR)
+
+library(tidyverse)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# Ensure the 'Date' column is in Date format
+cyano_ag_df_CR$Date <- as.Date(cyano_ag_df_CR$date)
+
+# Reshape the data from wide to long format for easier plotting
+cyano_long_df <- cyano_ag_df_CR %>%
+  pivot_longer(cols = c("chl", "phy", "ph", "Celsius", "spcond", "do", "turb", "Salinity", "sin_season", "Cyanobacteria (cells/mL)"),
+               names_to = "Variable",
+               values_to = "Value")  %>%
+
+
+mutate(Variable = recode(Variable,
+    "chl" = "Chlorophyll (RFU)",
+    "phy" = "Phycocyanin (RFU)",
+    "ph" = "pH",
+    "Celsius" = "Temperature (°C)",
+    "spcond" = "Specific Conductivity (mS/cm)",
+    "Salinity" = "Practical Salinity (S/m)",
+    "turb" = "Turbidity (FNU)",
+    "do" = "Dissolved Oxygen (mg/L)", 
+    "sin_season" = "Seasonality", 
+    
+  ))
+
+
+cyano_long_df <- na.omit(cyano_long_df)
+
+
+# Plot
+ggplot(cyano_long_df, aes(x = Date, y = Variable, fill = Variable)) +
+  geom_tile(height = 0.8) +  # Create bars
+  scale_fill_viridis_d() +  # Change to discrete color scale
+  labs(x = "Date", y = "Variable", title = "Data Timeline") +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(hjust = 0.5)
+    )# Adjust y-axis text size
+
+
+```
 
 #ag_df_CR
 
