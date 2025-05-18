@@ -381,10 +381,413 @@ legend("topright",
 
 
 #ARIMA
+#ADD IN HOURLY LATER 
+
+
+```{r}
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "CR_hourly"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+```
+
+
+
+```{r}
+
+ag_df_CR$chl
+ag_df_CR$phy
+
+morndf_CR$chl
+morndf_CR$phy
+
+CR_hourly$chl
+CR_hourly$phy
+
+
+ARIMA_morndf_chl
+ARIMA_morndf_phy
+
+ARIMA_daily_chl
+ARIMA_daily_phy
+
+ARIMA_hourly_chl
+ARIMA_hourly_phy
+
+ 
+# CR_hourly <- pad(CR_hourly, by = "hour")
+#   ag_df_CR <- pad(morndf_CR)
+# morndf_CR <- pad(morndf_CR)
+
+
+```
+
+#LOAD 
+
+
+
+
+
+```{r}
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "ag_df_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+```
+
+
+```{r}
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "morndf_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+```
+
+
+```{r}
+library(dplyr)
+library(lubridate)
+library(tibbletime)
+library(forecast)
+library(stringr)
+library(tibble)
+library(padr)
+
+process_ARIMA <- function(data, variable, start_year, start_period, frequency, label) {
+  print(paste("Processing:", label, variable))
+  
+  data[[variable]] <- as.numeric(data[[variable]])
+  
+  # Check for date column
+  if (!"date" %in% names(data)) {
+    stop("Dataframe must have a date column named 'date'")
+  }
+  
+  if (label == "hourly") {
+    data <- data %>%
+      mutate(datetime = as.POSIXct(date)) %>%
+      mutate(datetime = lubridate::floor_date(datetime, unit = "hour")) %>%
+      distinct(datetime, .keep_all = TRUE) %>%
+      as_tbl_time(index = datetime) %>%
+      pad(by = "hour")
+  } else {
+    data <- data %>%
+      as_tbl_time(index = date) %>%
+      pad()
+  }
+  
+  data <- na.omit(data)
+  print(paste("Rows after padding and na.omit:", nrow(data)))
+  
+  if(nrow(data) < 10) {
+    warning(paste("Not enough data after padding and na.omit for", label, variable))
+    return(tibble())
+  }
+  
+  ts_data <- ts(data[[variable]], start = c(start_year, start_period), frequency = frequency)
+  fit <- auto.arima(ts_data, seasonal = TRUE)
+  fcast <- forecast(fit, h = frequency)
+  # saveRDS(fcast, file = paste0("ARIMA_", label, "_", variable, ".rds"))
+  
+  aic_val <- AIC(fit)
+  rmse_val <- accuracy(fcast)[2]
+  
+  residuals_output <- capture.output(checkresiduals(fit))
+  print(residuals_output)  # Debug print to see exact output
+  
+   model_line <- residuals_output[4] %>% 
+  str_remove("^data:\\s*") %>% 
+  str_trim() %>%
+  str_remove("^Residuals from\\s*")
+print(model_line)
+
+q_star <- residuals_output[5] %>% 
+  str_match("Q\\* = ([0-9\\.]+)") %>% 
+  .[2] %>% 
+  as.numeric()
+print(q_star)
+
+
+p_val <- str_match(residuals_output, "p-value\\s*(<|=)\\s*([0-9\\.e\\-]+)") %>% 
+  .[5,3] %>% 
+  as.numeric()
+print(p_val)
+  
+  
+  tibble(
+    Dataset = label,
+    Variable = variable,
+    Model = model_line,
+    AIC = aic_val,
+    RMSE = rmse_val,
+    Q_Star = q_star,
+    P_Value = p_val
+  )
+}
+
+# Safe wrapper to catch errors and always return a tibble
+safe_process_ARIMA <- function(...) {
+  tryCatch(
+    process_ARIMA(...),
+    error = function(e) {
+      warning(paste("Error in process_ARIMA:", e$message))
+      return(tibble())  # empty tibble on error
+    }
+  )
+}
+
+# Run ARIMA processing safely for all datasets/variables
+results <- list(
+  safe_process_ARIMA(morndf_CR, "chl", 2015, 5, 365, "morndf"),
+  safe_process_ARIMA(morndf_CR, "phy", 2015, 5, 365, "morndf"),
+  safe_process_ARIMA(ag_df_CR, "chl", 2015, 5, 365, "daily"),
+  safe_process_ARIMA(ag_df_CR, "phy", 2015, 5, 365, "daily")
+  # Add your hourly calls if data available and ready:
+  # safe_process_ARIMA(CR_hourly, "chl", 2015, 5, 8760, "hourly"),
+  # safe_process_ARIMA(CR_hourly, "phy", 2015, 5, 8760, "hourly")
+)
+
+# Remove any empty results and combine
+results <- Filter(function(df) nrow(df) > 0, results)
+final_results <- bind_rows(results)
+
+
+```
+
+
+# SAVE TABLE
+
+```{r}
+
+
+library(dplyr)
+
+ARIMA <- final_results %>%
+  mutate(
+    Variable = recode(Variable,
+                      "chl" = "Chlorophyll (RFU)",
+                      "phy" = "Phycocyanin (RFU)"),
+    Dataset = recode(Dataset,
+                     "morndf" = "9 AM - 12 PM",
+                     "daily" = "Daily")
+  )
+
+
+library(magick)
+
+image_path <- "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/3_OUTPUT/4_5_figures_and_tables"
+
+
+library(gridExtra)
+library(ggplot2)
+
+
+image_path <- "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/3_OUTPUT/4_5_figures_and_tables/ARIMA.png"
+
+
+# Convert data frame to table grob
+table_grob <- tableGrob(ARIMA)
+
+# Save as PNG
+ggsave(image_path, table_grob, width = 10, height = 5, dpi = 300)
+
+
+```
+
+
+```{r}
+
+#Predict 2023
+
+
+library(tidyverse)
+library(rEDM)
+library(forecast)
+library(forecast)
+
+data <- list(
+  morndf = morndf_CR,
+  ag_df = ag_df_CR
+)
+
+variables <- c("chl", "phy")
+
+results_list <- list()
+
+for (dataset_name in names(data)) {
+  df <- data[[dataset_name]]
+  
+  for (var in variables) {
+    ts_data <- ts(df[[var]])  # Optionally add start, frequency if needed
+    
+    
+    key <- paste(dataset_name, var, sep = "_")
+    results_list[[key]] <- ts_data
+    
+    # Fit ARIMA model
+    fit <- auto.arima(ts_data, seasonal = TRUE)
+    
+    # Forecast next 365 periods (assumed daily)
+    fcast <- forecast(fit, h = length(data))
+
+    # Store forecast in dataframe
+    ARIMA_pred <- data.frame(forecast = as.numeric(fcast$mean))
+  
+          # Create date sequence starting from a specific date
+    start_date <- as.Date("2023-01-01") + 171  # 172nd day of year
+  
+      ARIMA_pred$date <- seq(from = start_date, by = "day", length.out = nrow(ARIMA_pred))
+    data$date <- seq(from = start_date
+                     
+                     
+                     , by = "day", length.out = nrow(data))
+
+    
+    # Print result
+    print(paste("Forecast for:", key))
+    print(head(ARIMA_pred))
+    
+    library(      ,ARIMA$pred)
+    
+    
+  }
+}
+
+
+
+
+
+
+
+
+```
+
+
+
+
 
 #ARIMA 9-12 CHL
 
+
+
+
 ```{r}
+
+library(tidyverse)
+
+
 morndf_CR <- morndf_CR %>% pad()
 
 class(morndf_CR )
@@ -419,6 +822,9 @@ print(summary(fcast))
 #forecast_1<-forecast(fit_basic1,xreg = testREG_TS)
 
 ARIMA_morndf_chl <- saveRDS(fcast, file = "ARIMA_morndf_chl")
+
+morndf_CR <- na.omit(morndf_CR)
+
 
 ```
 

@@ -18,23 +18,77 @@ library(rEDM)
 library(tidyverse)
 ```
 
+# "ag_df_CR" -> "DataFrame"
+
 ```{r}
 
-ag_df_CR <- readRDS("C:/Users/Matt hamburbur/Desktop/HAB2/HAB2/1_LIB/ag_df_CR.rds")
+# CONFIG: Define object name and paths
+quoted_file_name <- "ag_df_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
 
-library(rEDM)
-library(tidyverse)
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+
+#DATAFRAME 
+
+
+dataFrame <- ag_df_CR %>%
+  mutate(yday = yday(date)) %>%
+  select(yday, everything())
+
+dataFrame <- dataFrame[, -c(2)]
+
+
+# #cleanup 
+# 
+# rm(ag_df_CR)
+
 
 ```
 
 
 #Surr functions
 
-
 ```{r}
-do_1_xmap <- function(dataFrame, E, tau, Tp, lib=NULL, pred=NULL, columns, target, sample, exclusionRadius, random = FALSE, showPlot = FALSE, ...) {
 
-# do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, sample, exclusionRadius, random = FALSE, showPlot = FALSE) {
+#do_1_xmap -> RUN CCM. 
+
+do_1_xmap <- function(dataFrame, E, tau, Tp, lib=NULL, pred=NULL, columns, target, sample, exclusionRadius, random = FALSE, showPlot = FALSE, ...) {
 
     if(is.null(lib)){
     lib <- paste("1",nrow(dataFrame))
@@ -55,23 +109,18 @@ do_1_xmap <- function(dataFrame, E, tau, Tp, lib=NULL, pred=NULL, columns, targe
     ...
   )
 
-  # return(ccm_result)
 
   xmap_stats <- ComputeError(ccm_result$Observations,ccm_result$Predictions)
 
-  # # Extract rho at maximum library size
-  # # max_lib_size <- max(as.numeric(unlist(strsplit(libSizes, " "))))
-  # rho_max <- ccm_result %>%
-  #   # filter(LibrarySize == max_lib_size) %>%
-  #   pull(rho)
 
   return(xmap_stats)  # return mae, rmse, and rho
   # return(xmap_stats$rho)  # or return just rho
 }
 
+#CREATE SEASONAL SURROGATE, KERNEL SMOOTHING USING YDAY. SUBTRACT SEASONAL CYCLE TO GET RESIDUALS, SHUFFLE RESIDUALS. 
+
 make_yday_surrogate <- function(yday,ts,bw=28,num_surr=1){
   
-  # ksmooth(df_ph$yday,df_ph$ph,bandwidth=28,x.points=120:320,kernel="normal") 
   
   if (any(!is.finite(ts))) {
     stop("SurrogateData(): input time series contained invalid values")
@@ -90,90 +139,84 @@ make_yday_surrogate <- function(yday,ts,bw=28,num_surr=1){
   
 }
 
+#REPLACE TARGET W/ SEASONAL SURROGATE
 
 do_1_surr_xmap <- function(dataFrame, E, tau, Tp=0, columns, target, lib=NULL, pred=NULL, exclusionRadius, yday_col = "yday") {
-  
+
   if(is.null(lib)){
     lib <- paste("1",nrow(dataFrame))
     pred <- lib
   }
   # Make a temporary data frame with a surrogate of `target`
-  
+
   dataFrame_i <- dataFrame
   dataFrame_i[,target] <- make_yday_surrogate(dataFrame[,yday_col],dataFrame[,target])
-  
-  xmap_stats <- do_1_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target, 
+
+  xmap_stats <- do_1_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target,
                         lib=lib, pred=pred, exclusionRadius=exclusionRadius)
-  
-  # xmap_stats <- do_1_surr_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target, 
-  #                       lib=lib, pred=pred, exclusionRadius=exclusionRadius, yday_col = "yday")   #function 
+
 
   return(xmap_stats)
 }
 
-#do_1_xmap?
-
 
 ```
 
 
-#DataFrame
-
-
-```{r}
-
-
-# dataFrame <- readRDS("C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\1_LIB\\ag_df_CR.rds") %>%
-
-dataFrame <- ag_df_CR %>%
-  mutate(yday = yday(date)) %>%
-  select(yday, everything())
-
-dataFrame <- dataFrame[, -c(2)]
-
-
-tau_i <- 7
-
-
- #filename <- file.choose()
- #print(filename)
-
-
-```
-
-
-
-#   N = 1,  ag_df_CR
+#   N = 1 (TRUE),  ag_df_CR, phy
 
 ```{r}
 
+# SET PARAMETERS
 
-#change surrogate to regular
-#run regular calc 1 time (no loop)
-#estimmated p value is fraction of surrogates that beat rho max 
+n_surr <- 1
 
-tau_i <- 7
-n_surr <- 1 #1
+tau_i <- 7 
+E_i <- 3
+Tp_i <- 0 
+
+#PAR DATAFRAME VARS
+
+df <- dataFrame
 v_test_var <- c("ph","Celsius","spcond","do","turb","Salinity", "sin_season")
+columns_i <- "phy"
+
+#DYNAMIC PARAMS 
+
+exclusionRadius_i <- ifelse(tau_i == 1, 1, tau_i - 1)
+
+#CREATE SURROGATE DATAFRAME
 
 results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
   result_i <- map_dfr(1:n_surr,\(index){
     temp <-  do_1_surr_xmap(
-      dataFrame,
-      E=3,
+      dataFrame = df,
+      E= E_i,
       tau=tau_i,
-      Tp=0,
-      columns="phy",
+      Tp= Tp_i,
+      columns= columns_i,
       target= target_i,
-      exclusionRadius = tau_i) #do_1_surr_ccm
+      exclusionRadius = exclusionRadius_i)
     
-
-    temp <-  do_1_surr_xmap(dataFrame,E=3,tau=tau_i,Tp=0,columns="phy",target = "ph", 
-                           exclusionRadius = tau_i) 
+#OVERWRITE SURROGATE W/ TRUE
+    
+    
+    temp <-  do_1_surr_xmap(
+      dataFrame = df,
+      E=E_i,
+      tau=tau_i,
+      Tp=Tp_i,
+      columns=columns_i,
+      target = columns_i, 
+      exclusionRadius = exclusionRadius_i
+      ) 
     temp$index = index
     return(temp)
     })
+  
+  
+  #PULL RESULT
   
   result_i$target = target_i
   result_i <- result_i %>% select(target,index,everything())
@@ -181,42 +224,70 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
   
 })
+
+
+#SAVE + CLEAN UP
 
 n1_results_surr_xmap <- results_surr_xmap
-
+rm(n_surr, tau_i, E_i, Tp_i, df, v_test_var, columns_i, exclusionRadius_i)
 
 
 ```
 
-
-
-#   N = 500
+#   N = 500 (500 SURROGATES),  ag_df_CR, phy
 
 ```{r}
 
+# SET PARAMETERS
 
-tau_i <- 7
-n_surr <- 500 #1
+n_surr <- 500
+
+tau_i <- 7 
+E_i <- 3
+Tp_i <- 0 
+
+#PAR DATAFRAME VARS
+
+df <- dataFrame
 v_test_var <- c("ph","Celsius","spcond","do","turb","Salinity", "sin_season")
+columns_i <- "phy"
+
+#DYNAMIC PARAMS 
+
+exclusionRadius_i <- ifelse(tau_i == 1, 1, tau_i - 1)
+
+#CREATE SURROGATE DATAFRAME
 
 results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
   result_i <- map_dfr(1:n_surr,\(index){
     temp <-  do_1_surr_xmap(
-      dataFrame,
-      E=3,
+      df,
+      E= E_i,
       tau=tau_i,
-      Tp=0,
-      columns="phy",
+      Tp= Tp_i,
+      columns= columns_i,
       target= target_i,
-      exclusionRadius = tau_i) #do_1_surr_ccm
+      exclusionRadius = exclusionRadius_i)
     
-
-    temp <-  do_1_surr_xmap(dataFrame,E=3,tau=tau_i,Tp=0,columns="phy",target = "ph", 
-                           exclusionRadius = tau_i) 
+#OVERWRITE SURROGATE W/ TRUE
+    
+   
+    temp <-  do_1_surr_xmap(
+      dataFrame = df,
+      E=E_i,
+      tau=tau_i,
+      Tp=Tp_i,
+      columns=columns_i,
+      target = columns_i, 
+      exclusionRadius = exclusionRadius_i
+      ) 
     temp$index = index
     return(temp)
     })
+  
+  
+  #PULL RESULT
   
   result_i$target = target_i
   result_i <- result_i %>% select(target,index,everything())
@@ -225,17 +296,31 @@ results_surr_xmap <- map_dfr(v_test_var,\(target_i){
   
 })
 
-results_surr_xmap2 <- results_surr_xmap
+#SAVE + CLEAN UP
+
+n500_results_surr_xmap <- results_surr_xmap
+rm(n_surr, tau_i, E_i, Tp_i, df, v_test_var, columns_i, exclusionRadius_i)
+
+
+```
+
+#LOAD IF NOT SAVE 
+
+```{r}
+n1_results_surr_xmap <- results_surr_xmap
 
 n500_results_surr_xmap <- results_surr_xmap2
 
 saveRDS(n500_results_surr_xmap, file = "n500_results_surr_xmap.rds" )
 
+results_surr_xmap2 <- results_surr_xmap
 ```
 
 
 #Surr Test Table 
 ```{r}
+
+
 
 
 surrtable <- n1_results_surr_xmap %>%
@@ -404,11 +489,22 @@ go off univar tau
 - help us pick timescale of analysis appropiate for focal
 rather than refight value 
 
+df 
+E_i
+tau_i
+columns
+target
+
+
 
 ```{r}
+
+library(rEDM)
+
 tau_ccm <- 7
 
 E_ccm <- 3
+
 
 critical.r <- function( n, alpha = .05 ) {
    df <- n - 2
@@ -416,6 +512,9 @@ critical.r <- function( n, alpha = .05 ) {
   critical.r <- sqrt( (critical.t^2) / ( (critical.t^2) + df ) )
    return(critical.r)
 }
+
+
+
 
 #ph
 

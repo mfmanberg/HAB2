@@ -24,6 +24,8 @@ library(quantreg)
 
 #List of all data
 
+## Daily (ag_df_CR)
+
 ```{r}
 
 #CR BUOY
@@ -100,7 +102,7 @@ All.Var
     
 ```
 
-###9:12
+## 9 AM - Noon (morndf_CR)
 
 ```{r}
 
@@ -125,33 +127,33 @@ mornddf_CR$Salinity
 
 ```
 
-###HOURLY
+## 15 Min (CR_15)
 
 ```{r}
 
-df_CR
+CR_15
 
-df_CR$chl
+CR_15$chl
 
-df_CR$phy
+CR_15$phy
 
-df_CR$ph
+CR_15$ph
 
-df_CR$Celsius
+CR_15$Celsius
 
-df_CR$spcond
+CR_15$spcond
 
-df_CR$do
+CR_15$do
 
-df_CR$turb
+CR_15$turb
 
-df_CR$Salinity
+CR_15$Salinity
 
 
 ```
 
-##LOGAN
-
+##LOGAN (ag_Logan)
+ 
 ```{r}
 
     ag_Logan$HourlyAltimeterSetting 
@@ -224,173 +226,81 @@ All.CR_nutrients
 
 ```
 
+# 15 MIN (CR_15)
 
-# LOAD DATA
-
-##HOURLY - "CRYEAR"
+## Load EPA Buoy Data
 
 ```{r}
 
-#CR2023
+library(googlesheets4)
 
-if (file.exists("CR2023.rds")) {
-  # If it's saved locally, load the data
-  CR2023 <- readRDS("CR2023.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2023 <- read_sheet('https://docs.google.com/spreadsheets/d/1sMKGzW71qErP8DIrxWDvlgqN3o9MrprLjjAFGsOie3I/edit?usp=sharing')
-  saveRDS(CR2023, "CR2023.rds")
+# Define Google Sheets ID map
+google_sheets_map <- list(
+  `2015` = "1t5joquxku9OfQGDdsabp-GdR2sUw8hPDcwatC3SL90Q",
+  `2016` = "1sMcEOIzxPTUZ93-pTJBE0lQ3SI8kKihLZRdpZ32_Lyw",
+  `2017` = "11SO-RxRhcc4qqn3gRt4n13JWClFoG--kISMoPAR2FRA",
+  `2018` = "1CO0DHuKb3C-hE9z-r5yR-SXwPnZWZg4vQDuEtRv2r7k",
+  `2019` = "1PGZCChA-8HU-cLvPSxqrxd89gLTletDYgogMGwv4Dg4",
+  `2020` = "1Qvt0PIK4wPFPKbkM98pSQp9TbPsu_a6frTWFKv3aNQ4",
+  `2021` = "1vaDoymaAQmNFKqIgo1LStI7GQSKDeIqLy7We85IA3Oo",
+  `2022` = "1F5l-1dWi7EFOaEKf9o3eUBi6BgQOrC1Rj_lVNRPrx5U",
+  `2023` = "1sMKGzW71qErP8DIrxWDvlgqN3o9MrprLjjAFGsOie3I"
+)
+
+# Loop through each year and load data
+for (year in 2015:2023) {
+
+  message("Loading data for year: ", year)
+
+  # Define file paths
+  local_path <- sprintf("C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/CR%d.rds", year)
+  github_url <- sprintf("https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/CR%d.rds", year)
+  sheet_id <- google_sheets_map[[as.character(year)]]
+  google_sheets_url <- sprintf("https://docs.google.com/spreadsheets/d/%s/edit?usp=sharing", sheet_id)
+
+  # Attempt to load data
+  assign(paste0("CR", year),
+         tryCatch({
+           # Try GitHub with proper connection management
+           con <- url(github_url)
+           on.exit(close(con), add = TRUE)
+           data <- readRDS(con)
+           saveRDS(data, local_path)
+           data
+         }, error = function(e1) {
+           # Try local file
+           if (file.exists(local_path)) {
+             readRDS(local_path)
+           } else {
+             # Fallback to Google Sheets
+             data <- read_sheet(google_sheets_url, sheet = 2)
+             saveRDS(data, local_path)
+             data
+           }
+         })
+  )
 }
 
-#CR2022
-
-if (file.exists("CR2022.rds")) {
-  # If it's saved locally, load the data
-  CR2022 <- readRDS("CR2022.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2022 <- read_sheet('https://docs.google.com/spreadsheets/d/1F5l-1dWi7EFOaEKf9o3eUBi6BgQOrC1Rj_lVNRPrx5U/edit?usp=sharing', sheet = 2)
-  saveRDS(CR2022, "CR2022.rds")
-}
-
-#CR2021
-
-if (file.exists("CR2021.rds")) {
-  # If it's saved locally, load the data
-  CR2021 <- readRDS("CR2021.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2021 <- read_sheet('https://docs.google.com/spreadsheets/d/1vaDoymaAQmNFKqIgo1LStI7GQSKDeIqLy7We85IA3Oo/edit?usp=sharing', sheet = 2)
-  saveRDS(CR2021, "CR2021.rds")
-}
-
-####FIX 2021
-
-#CR2020
+# Clean up temporary variables
+rm(local_path, github_url, sheet_id, google_sheets_url, google_sheets_map, year, data, con)
 
 
-if (file.exists("CR2020.rds")) {
-  # If it's saved locally, load the data
-  CR2020 <- readRDS("CR2020.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2020 <- read_sheet('https://docs.google.com/spreadsheets/d/1Qvt0PIK4wPFPKbkM98pSQp9TbPsu_a6frTWFKv3aNQ4/edit?usp=sharing', sheet = 2)
-  saveRDS(CR2020, "CR2020.rds")
-}
-
-
-#CR2019
-
-if (file.exists("CR2019.rds")) {
-  # If it's saved locally, load the data
-  CR2019 <- readRDS("CR2019.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2019 <- read_sheet('https://docs.google.com/spreadsheets/d/1PGZCChA-8HU-cLvPSxqrxd89gLTletDYgogMGwv4Dg4/edit?usp=sharing')
-  saveRDS(CR2019, "CR2019.rds")
-}
-
-
-#CR2018
-
-
-if (file.exists("CR2018.rds")) {
-  # If it's saved locally, load the data
-  CR2018 <- readRDS("CR2018.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2018 <- read_sheet('https://docs.google.com/spreadsheets/d/1CO0DHuKb3C-hE9z-r5yR-SXwPnZWZg4vQDuEtRv2r7k/edit?usp=sharing', sheet = 2)
-  saveRDS(CR2018, "CR2018.rds")
-}
-
-
-#CR2017
-
-if (file.exists("CR2017.rds")) {
-  # If it's saved locally, load the data
-  CR2017 <- readRDS("CR2018.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2017 <- read_sheet('https://docs.google.com/spreadsheets/d/11SO-RxRhcc4qqn3gRt4n13JWClFoG--kISMoPAR2FRA/edit?usp=sharing', sheet = 2)
-  saveRDS(CR2017, "CR2017.rds")
-}
-
-#CR2016
-
-
-if (file.exists("CR2016.rds")) {
-  # If it's saved locally, load the data
-  CR2016 <- readRDS("CR2016.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-CR2016 <- read_sheet('https://docs.google.com/spreadsheets/d/1sMcEOIzxPTUZ93-pTJBE0lQ3SI8kKihLZRdpZ32_Lyw/edit?gid=2119695334#gid=2119695334
-', sheet = 2)
-  saveRDS(CR2017, "CR2016.rds")
-}
-
-# CR2015
-
-if (file.exists("CR2015.rds")) {
-  # If it's saved locally, load the data
-  CR2015 <- readRDS("CR2015.rds")
-} else {
-  # Try loading from GitHub
-  tryCatch({
-    github_url <- "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/CR2015.rds"
-    CR2015 <- readRDS(url(github_url))
-    saveRDS(CR2015, "CR2015.rds")
-  }, error = function(e) {
-    # If GitHub load fails, fallback to Google Sheets
-    CR2015 <- read_sheet('https://docs.google.com/spreadsheets/d/1t5joquxku9OfQGDdsabp-GdR2sUw8hPDcwatC3SL90Q/edit?usp=sharing', sheet = 2)
-    saveRDS(CR2015, "CR2015.rds")
-  })
-}
+#closeAllConnections()
 
 
 ```
 
+## Wrangle EPA Buoy Data
 
 ```{r}
 
-#CR2015
-
-   ## Define path
-local <- "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/CR2015.rds"
-github_url <- "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/CR2015.rds"
-  
-  if (file.exists(local_path)) {
-  # If it's saved locally, load the data
-  CR2015 <- readRDS(local_path)
-} else {
-  # Try loading from GitHub
-  tryCatch({
-    CR2015 <- readRDS(url(github_url))
-    saveRDS(CR2015, local_path)
-  }, error = function(e) {
-    # If GitHub load fails, fallback to Google Sheets
-    CR2015 <- read_sheet('https://docs.google.com/spreadsheets/d/1t5joquxku9OfQGDdsabp-GdR2sUw8hPDcwatC3SL90Q/edit?usp=sharing', sheet = 2)
-    saveRDS(CR2015, local_path)
-  })
-}
-
-   ## move path from environment
-
-rm(local, github_url) 
+library(dplyr)
+library(lubridate)
 
 
-
-```
-
-
-
-
-
-
-#df_CR
-
-```{r}
 #bind rows
-df_CR <- bind_rows(
+
+CR_15 <- bind_rows(
   CR2015,
   CR2016,
   CR2017, 
@@ -402,211 +312,633 @@ df_CR <- bind_rows(
   CR2023
 )
 
-#combine data
-df_CR <- df_CR %>%
+
+CR_15 <- CR_15 %>%
   mutate(hour = pmin(hour(`time est`),hour(`time edt`),na.rm=T),
          minute = pmin(minute(`time est`),minute(`time edt`),na.rm=T)) %>%
   select(date,hour,minute,chl=`chlorophyll (rfu)`,phy=`phycocyanin (rfu)`, ph=`ph`, Celsius =`temp c`,  spcond = `spcond (ms/cm)`, do = `do (mg/l)`,turb = `turbidity (fnu)` )
-  
+
+
+
+missing_CR_15 <- CR_15 %>%
+  filter(
+    # Keep rows where at least one non-hour, non-minute column has an NA value
+    if_any(-c(hour, minute, date), is.na) &
+    # Remove rows where all non-hour, non-minute columns are NA
+    !if_all(-c(hour, minute, date), is.na)
+  )
+
+
+CR_15 <- na.omit(CR_15)
+
 
 ```
 
-#add salinity
+# Add seasonality 365 day cycle (sin_season)
 
 ```{r}
 
-#%>% rename(`time est`=time)
-#Aggregate Values Daily
-df_CR$spcond = df_CR$spcond * 0.1 #mS to S/m
+library(padr)
 
-df_CR$Salinity <- 
+CR_15 <- bind_rows(
+  CR2015,
+  CR2016,
+  CR2017, 
+  CR2018,
+  CR2019,
+  CR2020,
+  CR2021,
+  CR2022,
+  CR2023
+)
+
+
+CR_15 <- CR_15 %>%
+  mutate(hour = pmin(hour(`time est`),hour(`time edt`),na.rm=T),
+         minute = pmin(minute(`time est`),minute(`time edt`),na.rm=T)) %>%
+  select(date,hour,minute,chl=`chlorophyll (rfu)`,phy=`phycocyanin (rfu)`, ph=`ph`, Celsius =`temp c`,  spcond = `spcond (ms/cm)`, do = `do (mg/l)`,turb = `turbidity (fnu)` )
+
+
+CR_15 <- na.omit(CR_15)
+
+CR_15 <- pad(CR_15)
+
+CR_15$DateTime <- seq(
+  from = as.POSIXct("2015-05-13 00:00:00"),
+  by = "15 min",
+  length.out = nrow(CR_15)
+)
+
+
+
+# Add day of year + fraction of the day
+CR_15 <- CR_15 %>%
+  mutate(
+    yday_frac = yday(DateTime) + 
+                (hour(DateTime) + minute(DateTime)/60) / 24,
+    sin_season = sin(2 * pi * yday_frac / 365)
+  )
+
+sum(is.na(CR_15$sin_season))  # Count NA values in sin_season
+
+CR_15 <- na.omit(CR_15)
+
+
+CR_15 <- CR_15 %>%
+  select(-DateTime, -yday_frac)
+
+```
+
+
+# Add practical salinity (Salinity)
+
+##Convert Salinity m/s to S/m
+
+```{r}
+
+CR_15$spcond = CR_15$spcond * 0.1 #mS to S/m
+
+```
+
+## Calculate practical salinity
+
+```{r}
+
+library(oce)
+
+CR_15$Salinity <- 
 
   swSCTp(
-  df_CR$spcond,
-df_CR$Celsius,
-  pressure = rep(10.1325,NROW(df_CR)),
+  CR_15$spcond,
+CR_15$Celsius,
+  pressure = rep(10.1325,NROW(CR_15)),
   # "S/cm",
 "",
   eos = getOption("oceEOS", default = "gsw")
 )
 
-if (file.exists("df_CR.rds")) {
-  # If it's saved locally, load the data2
-  df_CR <- readRDS("df_CR.rds")
-} else {
-saveRDS(df_CR, "df_CR.rds")
-}
-
 ```
 
-#add seasonality
+### Load if not save
 
 ```{r}
 
-# CYCLE
 
-cycle <- df_example
+# CONFIG: Define object name and paths
+quoted_file_name <- "CR_15"
+rds_name <- paste0(quoted_file_name, ".rds")
 
-if (file.exists("cycle.rds")) {
-  # If it's saved locally, load the data
-  cycle <- readRDS("cycle.rds")
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
 } else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-  saveRDS(cycle, "cycle.rds")
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
 }
 
-merged_df <- merge(ag_df_CR, cycle, by.x = "date", by.y = "Date", all.x = TRUE)
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
 
-ag_df_CR <- merged_df %>% select(-10)
 
-if (file.exists("ag_df_CR.rds")) {
-  # If it's saved locally, load the data
-  ag_df_CR <- readRDS("ag_df_CR.rds")
+```
+
+
+## HOURLY (CR_HOURLY)
+```{r}
+
+ CR_hourly <- CR_15 %>%
+  group_by(date, hour) %>%
+  summarise(
+    chl = mean(chl, na.rm = TRUE),
+    phy = mean(phy, na.rm = TRUE),
+    ph = mean(ph, na.rm = TRUE),
+    Celsius = mean(Celsius, na.rm = TRUE),
+    spcond = mean(spcond, na.rm = TRUE),
+    do = mean(do, na.rm = TRUE),
+    turb = mean(turb, na.rm = TRUE),
+    sin_season = mean(sin_season, na.rm = TRUE),
+    Salinity = mean(Salinity, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "CR_hourly"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
 } else {
-  saveRDS(ag_df_CR, "ag_df_CR.rds")
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
 }
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
 
 
 
 ```
 
-#Timeline - Sanity Check 
+
+#plot misaligned values  
 
 ```{r}
-
-#Timeline
-
-ag_df_CR <- ag_df_CR %>%
-  filter(!is.na(phy))  # Remove rows where 'phy' is NA
-
-#pad(cyano_ag_df_CR)
-
-library(tidyverse)
-library(ggplot2)
-library(tidyr)
 library(dplyr)
+library(tidyr)
+library(ggplot2)
 
-# Ensure the 'Date' column is in Date format
-cyano_ag_df_CR$Date <- as.Date(cyano_ag_df_CR$date)
 
-# Reshape the data from wide to long format for easier plotting
-cyano_long_df <- cyano_ag_df_CR %>%
-  pivot_longer(cols = c("chl", "phy", "ph", "Celsius", "spcond", "do", "turb", "Salinity", "sin_season", "Cyanobacteria (cells/mL)"),
+CR_15 <- CR_15 %>%
+  mutate(hour = pmin(hour(`time est`),hour(`time edt`),na.rm=T),
+         minute = pmin(minute(`time est`),minute(`time edt`),na.rm=T)) %>%
+  select(date,hour,minute,chl=`chlorophyll (rfu)`,phy=`phycocyanin (rfu)`, ph=`ph`, Celsius =`temp c`,  spcond = `spcond (ms/cm)`, do = `do (mg/l)`,turb = `turbidity (fnu)` )
+
+
+
+missing_CR_15 <- CR_15 %>%
+  filter(
+    # Keep rows where at least one non-hour, non-minute column has an NA value
+    if_any(-c(hour, minute, date), is.na) &
+    # Remove rows where all non-hour, non-minute columns are NA
+    !if_all(-c(hour, minute, date), is.na)
+  )
+
+
+# Replace NA values with 5.555 in the specified columns
+missing_CR_15 <- missing_CR_15 %>%
+  mutate(across(c(chl, phy, ph, Celsius, spcond, do, turb), ~ replace(., is.na(.), 5.555)))
+
+# Add Source identifiers
+missing_CR_15$Source <- "Missing"
+CR_15$Source <- "Present"
+
+# Combine both datasets
+combined_df <- bind_rows(CR_15, missing_CR_15)
+
+# Ensure Date column is in correct format
+combined_df$Date <- as.Date(combined_df$date)
+
+# Reshape to long format
+combined_long_df <- combined_df %>%
+  pivot_longer(cols = c("chl", "phy", "ph", "Celsius", "spcond", "do", "turb"),
                names_to = "Variable",
-               values_to = "Value")  %>%
-
-
-mutate(Variable = recode(Variable,
+               values_to = "Value") %>%
+  mutate(Variable = recode(Variable,
     "chl" = "Chlorophyll (RFU)",
     "phy" = "Phycocyanin (RFU)",
     "ph" = "pH",
     "Celsius" = "Temperature (°C)",
     "spcond" = "Specific Conductivity (mS/cm)",
-    "Salinity" = "Practical Salinity (S/m)",
     "turb" = "Turbidity (FNU)",
-    "do" = "Dissolved Oxygen (mg/L)", 
-    "sin_season" = "Seasonality", 
-    
+    "do" = "Dissolved Oxygen (mg/L)")
+  ) %>%
+  # Assign color categories based on value and source
+  mutate(Value_Color = case_when(
+    Value == 5.555 ~ "highlight",                   # 5.555 values
+    Source == "Missing" ~ "missing_but_real_value", # Missing but not 5.555
+    TRUE ~ "normal"                                 # All other values
   ))
 
-
-cyano_long_df <- na.omit(cyano_long_df)
-
-
 # Plot
-ggplot(cyano_long_df, aes(x = Date, y = Variable, fill = Variable)) +
-  geom_tile(height = 0.8) +  # Create bars
-  scale_fill_viridis_d() +  # Change to discrete color scale
-  labs(x = "Date", y = "Variable", title = "Data Timeline") +
+ggplot(combined_long_df, aes(x = Date, y = Variable, fill = Value_Color)) +
+  geom_tile(height = 0.8) +
+  scale_fill_manual(values = c(
+    "normal" = "darkblue",
+    "NA Value" = "orange",
+    "Value Misaligned with NA" = "lightgreen"
+  )) +
+  labs(
+    x = "Date",
+    y = "Variable",
+    title = "Data Timeline (Present vs Missing vs 5.555 Values)"
+  ) +
   theme_minimal() +
   theme(
     axis.text.y = element_text(size = 8),
     plot.title = element_text(hjust = 0.5)
-    )# Adjust y-axis text size
+  )
 
 
 ```
 
-#ag_df_CR
 
 ```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Replace NA values with 5.555 in the specified columns
+missing_CR_15 <- missing_CR_15 %>%
+  mutate(across(c(chl, phy, ph, Celsius, spcond, do, turb), ~ replace(., is.na(.), 5.555)))
+
+# Add Source identifiers
+missing_CR_15$Source <- "Missing"
+CR_15$Source <- "Present"
+
+# Combine both datasets
+combined_df <- bind_rows(CR_15, missing_CR_15)
+
+# Ensure Date column is in correct format
+combined_df$Date <- as.Date(combined_df$date)
+
+# Reshape to long format
+combined_long_df <- combined_df %>%
+  pivot_longer(cols = c("chl", "phy", "ph", "Celsius", "spcond", "do", "turb"),
+               names_to = "Variable",
+               values_to = "Value") %>%
+  mutate(Variable = recode(Variable,
+    "chl" = "Chlorophyll (RFU)",
+    "phy" = "Phycocyanin (RFU)",
+    "ph" = "pH",
+    "Celsius" = "Temperature (°C)",
+    "spcond" = "Specific Conductivity (mS/cm)",
+    "turb" = "Turbidity (FNU)",
+    "do" = "Dissolved Oxygen (mg/L)")
+  ) %>%
+  # Assign color categories based on value and source
+  mutate(Value_Color = case_when(
+    Value == 5.555 ~ "Value Misaligned with NA",   # Highlighted replacement value
+    Source == "Missing" ~ "NA Value",              # Originally missing but not 5.555
+    TRUE ~ "normal"                                # All other values
+  ))
+
+# Plot
+ggplot(combined_long_df, aes(x = Date, y = Variable, fill = Value_Color)) +
+  geom_tile(height = 0.8) +
+  scale_fill_manual(values = c(
+    "normal" = "darkblue",
+    "NA Value" = "orange",
+    "Value Misaligned with NA" = "lightgreen"
+  )) +
+  labs(
+    x = "Date",
+    y = "Variable",
+    title = "Data Timeline (Present vs Missing vs 5.555 Values)",
+    fill = "Data Type"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(hjust = 0.5)
+  )
+
+```
+
+
+
+### "Load, if not Save" 15 min Data (CR_15)
+
+```{r}
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "CR_15"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+
+
+```
+
+
+#Daily (ag_df_CR)
+
+
+```{r}
+
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "CR_15"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+
+
 #ag_df_CR
 
 
-ag_df_CR <-df_CR %>%
+ag_df_CR <-CR_15 %>%
   mutate(date = trunc(date,"days")) %>%
    group_by(date) %>%
-  summarise(chl=mean(chl, na.rm = TRUE), phy=mean(phy, na.rm = TRUE), ph=mean(ph, na.rm = TRUE), Celsius=mean(Celsius,na.rm = TRUE), spcond=mean(spcond,na.rm = TRUE), do=mean(do,na.rm = TRUE), turb=mean(turb,na.rm = TRUE), Salinity = mean(Salinity,na.rm = TRUE))
-
-ag_df_CR <- na.omit(ag_df_CR)
+  summarise(chl=mean(chl, na.rm = TRUE), phy=mean(phy, na.rm = TRUE), ph=mean(ph, na.rm = TRUE), Celsius=mean(Celsius,na.rm = TRUE), spcond=mean(spcond,na.rm = TRUE), do=mean(do,na.rm = TRUE), turb=mean(turb,na.rm = TRUE), Salinity = mean(Salinity,na.rm = TRUE), sin_season = mean(sin_season,na.rm = TRUE))
 
 
-library(lubridate)
+sum(is.na(ag_df_CR$phy))  # Count NA values
 
-yday(as.Date("2024-03-01"))
+ag_df_CR$date <- as.Date(ag_df_CR$date)
 
-df_example <- data.frame(seq(as.Date("2015-01-01"),by=1,length.out=5000))
-df_example <- data.frame(Date=seq(as.Date("2015-01-01"),by=1,length.out=5000))
-df_example <- df_example %>% mutate(yday = yday(Date))
-head(df_example)
-df_example <- df_example %>% mutate(sin_season = sin(2*pi*yday/365))
-df_example %>% ggplot(aes(x=Date,y=sin_season)) + geom_line()
+
+
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "ag_df_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+
 
 
 
 ```
 
 
-# CYCLE
+# 9 AM - 12 PM (morndf_CR)
 
 ```{r}
+# Load CR_15 from local file if it exists, otherwise try GitHub
 
-cycle <- df_example
+# Define file name and paths
+file_name <- "CR_15.rds"
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  file_name
+)
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  file_name
+)
 
-if (file.exists("cycle.rds")) {
-  # If it's saved locally, load the data
-  cycle <- readRDS("cycle.rds")
-} else {
-  # If it's not saved locally, read it from Google Sheets and save it locally
-  saveRDS(cycle, "cycle.rds")
-}
-
-merged_df <- merge(ag_df_CR, cycle, by.x = "date", by.y = "Date", all.x = TRUE)
-
-ag_df_CR <- merged_df %>% select(-10)
-
-if (file.exists("ag_df_CR.rds")) {
-  # If it's saved locally, load the data
-  ag_df_CR <- readRDS("ag_df_CR.rds")
-} else {
-  saveRDS(ag_df_CR, "ag_df_CR.rds")
-}
-
+# Attempt to load from local, else GitHub
+CR_15 <- tryCatch({
+  if (file.exists(local_path)) {
+    message("Loading CR_15 from local path.")
+    readRDS(local_path)
+  } else {
+    message("Local file not found. Attempting to load CR_15 from GitHub.")
+    con <- url(github_url)
+    on.exit(close(con), add = TRUE)  # Ensure connection is closed
+    data <- readRDS(con)
+    saveRDS(data, local_path)
+    message("Loaded from GitHub and saved locally.")
+    data
+  }
+}, error = function(e) {
+  stop("Failed to load CR_15 from both local and GitHub.")
+})
 
 
-```
+# Clean up
+rm(file_name, local_path, github_url)
 
-
-# 9-12 Values
-
-```{r}
-
-df_CR <- readRDS("df_CR.rds")
-
-morndf_CR <- df_CR %>%
+morndf_CR <- CR_15 %>%
   filter(hour %in% c(9, 10, 11))
 
 morndf_CR <-morndf_CR %>% 
    mutate(date = trunc(date,"days")) %>%
    group_by(date) %>%
-  summarise(chl=mean(chl, na.rm = TRUE), phy=mean(phy, na.rm = TRUE), ph=mean(ph, na.rm = TRUE), Celsius=mean(Celsius,na.rm = TRUE), spcond=mean(spcond,na.rm = TRUE), do=mean(do,na.rm = TRUE), turb=mean(turb,na.rm = TRUE), Salinity = mean(Salinity,na.rm = TRUE))
+   summarise(chl=mean(chl, na.rm = TRUE), phy=mean(phy, na.rm = TRUE), ph=mean(ph, na.rm = TRUE), Celsius=mean(Celsius,na.rm = TRUE), spcond=mean(spcond,na.rm = TRUE), do=mean(do,na.rm = TRUE), turb=mean(turb,na.rm = TRUE), Salinity = mean(Salinity,na.rm = TRUE), sin_season = mean(sin_season,na.rm = TRUE))
 
-if (file.exists("morndf_CR.rds")) {
-  # If it's saved locally, load the data
-  morndf_CR <- readRDS("morndf_CR.rds")
+sum(is.na(morndf_CR$phy))  # Count NA values
+
+morndf_CR$date <- as.Date(morndf_CR$date)
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "morndf_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
 } else {
-  saveRDS(morndf_CR, "morndf_CR.rds")
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
 }
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+
 
 ```
 

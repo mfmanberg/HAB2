@@ -1,0 +1,1492 @@
+---
+title: "01_univar_i"
+output: html_document
+date: "2025-05-16"
+editor_options: 
+  chunk_output_type: console
+---
+
+#PLOT SIMPLEX V. AR1 UNIVAR PLOT
+
+## LOAD AR1 DAILY
+
+
+```{r}
+
+library(tidyverse)
+library(rEDM)
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "ag_df_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+```
+
+### CALC AR1 DAILY
+
+```{r}
+
+# Assuming you have ag_df_CR already loaded
+df <- ag_df_CR
+df_name <- "daily"
+
+# Get the first row of year 2023
+first_row_2023 <- which(format(df$date, "%Y") == "2023")[1]
+
+# Set library (training) and prediction (out-of-sample) ranges
+lib_ins <- c(1, first_row_2023 - 1)
+lib_oos <- c(first_row_2023, nrow(df))
+
+# Variables to loop over
+independent_vars <- c("phy", "chl")
+tau_range <- 1:10
+
+# Loop and compute rho for each variable and tau
+for (indep_var in independent_vars) {
+  for (tau_i in tau_range) {
+    
+    # Run the model
+    AR1 <- SMap(dataFrame = df, columns = indep_var, target = indep_var,
+                lib = lib_ins, pred = lib_oos, E = 1, theta = 0, 
+                tau = -tau_i, Tp = tau_i, showPlot = FALSE)
+    
+    # Compute rho
+    rho_AR1 <- ComputeError(AR1$predictions$Observations,
+                            AR1$predictions$Predictions)
+    
+    # Create dynamic variable name
+    var_name <- paste0("max_ar1_", df_name, "_", indep_var, "_tau", tau_i)
+    
+    # Assign to global environment
+    assign(var_name, rho_AR1$rho)
+    
+    # print to monitor progress
+    cat(var_name, "=", rho_AR1$rho, "\n")
+  }
+}
+
+
+
+```
+
+
+## LOAD AR1 MORN
+
+```{r}
+
+
+library(tidyverse)
+library(rEDM)
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "morndf_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+```
+
+### CALC AR1 9 AM - 12 PM
+
+
+```{r}
+
+
+# Assuming you have ag_df_CR already loaded
+df <- morndf_CR
+df_name <- "morn"
+
+# Get the first row of year 2023
+first_row_2023 <- which(format(df$date, "%Y") == "2023")[1]
+
+# Set library (training) and prediction (out-of-sample) ranges
+lib_ins <- c(1, first_row_2023 - 1)
+lib_oos <- c(first_row_2023, nrow(df))
+
+# Variables to loop over
+independent_vars <- c("phy", "chl")
+tau_range <- 1:25
+
+# Loop and compute rho for each variable and tau
+for (indep_var in independent_vars) {
+  for (tau_i in tau_range) {
+    
+    # Run the model
+    AR1 <- SMap(dataFrame = df, columns = indep_var, target = indep_var,
+                lib = lib_ins, pred = lib_oos, E = 1, theta = 0, 
+                tau = -tau_i, Tp = tau_i, showPlot = FALSE)
+    
+    # Compute rho
+    rho_AR1 <- ComputeError(AR1$predictions$Observations,
+                            AR1$predictions$Predictions)
+    
+    # Create dynamic variable name
+    var_name <- paste0("max_ar1_", df_name, "_", indep_var, "_tau", tau_i)
+    
+    # Assign to global environment
+    assign(var_name, rho_AR1$rho)
+    
+    # print to monitor progress
+    cat(var_name, "=", rho_AR1$rho, "\n")
+  }
+}
+
+
+
+```
+
+#DAILY SIMPLEX
+
+
+## SIMPLEX DAILY
+
+
+```{r}
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "CR_hourly"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "morndf_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+
+
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "ag_df_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+
+
+```
+
+## DAILY PHY
+
+```{r}
+library(rEDM)
+library(tidyverse)
+
+#SELECT PARAMS - PHY DAILY
+
+df <- ag_df_CR
+
+independet_var <- "phy"
+
+tau_i <- 7
+
+maxE_i <- 20
+
+
+  #DYNAMIC PARAMS
+
+columns_i <- independet_var
+target_i <- independet_var
+
+
+first_row_2023 <- which(format(df$date, "%Y") == "2023")[1]
+lib_ins <- c(1, first_row_2023 - 1)
+lib_oos <- c(first_row_2023, nrow(df))
+
+ exclusionRadius_i <- ifelse(tau_i == 1, 1, tau_i - 1)
+
+ 
+ 
+ 
+
+#SIMPLEX 
+
+simplex <- EmbedDimension(dataFrame = df, 
+                          columns = columns_i, 
+                          target = target_i,
+                           tau=-tau_i,
+                          Tp=tau_i,
+                          maxE = maxE_i, exclusionRadius = exclusionRadius_i, 
+lib = lib_ins, 
+pred = lib_oos, 
+showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_E_row <- simplex[which.max(simplex$rho), ]
+simplexE <- best_simplex_E_row$E
+
+
+#SMAP PHY DAILY
+
+
+theta_i <- "0.01 0.1 0.3 0.5 0.75 1 1.5 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20" 
+# 21 22 23 24 25"
+
+smap <- PredictNonlinear(dataFrame = df, columns = columns_i, target = columns_i,
+ E= simplexE , 
+ 
+ theta = theta_i , 
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = exclusionRadius_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_smap_theta_row <- print(smap[which.max(smap$rho), ])
+
+smaptheta <- best_smap_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_daily_phy_tau7 <- best_simplex_E_row$rho
+
+#SIMPLEX VALUES
+simplex_daily_phy_tau7 <- simplex
+
+#MAX SMAP
+max_smap_daily_phy_tau7 <- best_smap_theta_row$rho 
+
+#SMAP VALUES
+smap_daily_phy_tau7 <- smap
+
+
+
+```
+
+
+#DAILY - CHL
+
+```{r}
+
+
+#SELECT PARAMS - CHL DAILY
+
+df <- ag_df_CR
+
+independet_var <- "chl"
+
+tau_i <- 4
+
+maxE_i <- 20
+
+
+  #DYNAMIC PARAMS
+
+columns_i <- independet_var
+target_i <- independet_var
+
+
+first_row_2023 <- which(format(df$date, "%Y") == "2023")[1]
+lib_ins <- c(1, first_row_2023 - 1)
+lib_oos <- c(first_row_2023, nrow(df))
+
+ exclusionRadius_i <- ifelse(tau_i == 1, 1, tau_i - 1)
+
+ 
+
+#SIMPLEX 
+
+simplex <- EmbedDimension(dataFrame = df, 
+                          columns = columns_i, 
+                          target = target_i,
+                           tau=-tau_i,
+                          Tp=tau_i,
+                          maxE = maxE_i, exclusionRadius = exclusionRadius_i, 
+lib = lib_ins, 
+pred = lib_oos, 
+showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_E_row <- simplex[which.max(simplex$rho), ]
+simplexE <- best_simplex_E_row$E
+
+
+#SMAP 
+
+
+################### E = 3
+
+theta_i <- "0.01 0.1 0.3 0.5 0.75 1 1.5 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20" 
+# 21 22 23 24 25"
+
+smap <- PredictNonlinear(dataFrame = df, columns = columns_i, target = columns_i,
+ E= 3 , 
+ 
+ theta = theta_i , 
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = exclusionRadius_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_smap_theta_row <- print(smap[which.max(smap$rho), ])
+
+smaptheta <- best_smap_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_daily_chl_tau4 <- best_simplex_E_row$rho 
+
+#SIMPLEX VALUES
+simplex_daily_chl_tau4 <- simplex
+
+#MAX SMAP
+max_smap_daily_chl_tau4 <- best_smap_theta_row$rho 
+
+#SMAP VALUES
+smap_daily_chl_tau4 <- smap
+
+
+```
+
+
+
+
+
+
+#SIMPLEX MORN
+
+## MORN PHY
+```{r}
+
+
+#SELECT PARAMS - PHY MORN
+
+df <- morndf_CR
+
+independet_var <- "phy"
+
+tau_i <- 7
+
+maxE_i <- 30
+
+
+  #DYNAMIC PARAMS
+
+columns_i <- independet_var
+target_i <- independet_var
+
+
+first_row_2023 <- which(format(df$date, "%Y") == "2023")[1]
+lib_ins <- c(1, first_row_2023 - 1)
+lib_oos <- c(first_row_2023, nrow(df))
+
+ exclusionRadius_i <- ifelse(tau_i == 1, 1, tau_i - 1)
+
+ 
+
+#SIMPLEX 
+
+simplex <- EmbedDimension(dataFrame = df, 
+                          columns = columns_i, 
+                          target = target_i,
+                           tau=-tau_i,
+                          Tp=tau_i,
+                          maxE = maxE_i, exclusionRadius = exclusionRadius_i, 
+lib = lib_ins, 
+pred = lib_oos, 
+showPlot = TRUE) #lib train, #pred is pred 
+
+################### E = 3
+
+best_simplex_E_row <- 0.1988442602
+simplexE <- 3
+
+
+#SMAP 
+
+
+
+theta_i <- "0.01 0.1 0.3 0.5 0.75 1 1.5 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20" 
+# 21 22 23 24 25"
+
+smap <- PredictNonlinear(dataFrame = df, columns = columns_i, target = columns_i,
+ E= simplexE , 
+ 
+ theta = theta_i , 
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = exclusionRadius_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_smap_theta_row <- print(smap[which.max(smap$rho), ])
+
+smaptheta <- best_smap_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_morn_phy_tau7 <- best_simplex_E_row
+
+#SIMPLEX VALUES
+simplex_morn_phy_tau7 <- simplex
+
+#MAX SMAP
+max_smap_morn_phy_tau7 <- best_smap_theta_row$rho 
+
+#SMAP VALUES
+smap_morn_phy_tau7 <- smap
+
+
+
+```
+
+#MORN CHL 
+
+```{r}
+
+
+#SELECT PARAMS - CHL MORN
+
+df <- morndf_CR
+
+independet_var <- "chl"
+
+tau_i <- 4
+
+maxE_i <- 30
+
+
+  #DYNAMIC PARAMS
+
+columns_i <- independet_var
+target_i <- independet_var
+
+
+first_row_2023 <- which(format(df$date, "%Y") == "2023")[1]
+lib_ins <- c(1, first_row_2023 - 1)
+lib_oos <- c(first_row_2023, nrow(df))
+
+ exclusionRadius_i <- ifelse(tau_i == 1, 1, tau_i - 1)
+
+ 
+
+#SIMPLEX 
+
+simplex <- EmbedDimension(dataFrame = df, 
+                          columns = columns_i, 
+                          target = target_i,
+                           tau=-tau_i,
+                          Tp=tau_i,
+                          maxE = maxE_i, exclusionRadius = exclusionRadius_i, 
+lib = lib_ins, 
+pred = lib_oos, 
+showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_E_row <- simplex[which.max(simplex$rho), ]
+simplexE <- best_simplex_E_row$E
+
+
+#SMAP 
+
+
+theta_i <- "0.01 0.1 0.3 0.5 0.75 1 1.5 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20" 
+# 21 22 23 24 25"
+
+smap <- PredictNonlinear(dataFrame = df, columns = columns_i, target = columns_i,
+ E= simplexE , 
+ 
+ theta = theta_i , 
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = exclusionRadius_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_smap_theta_row <- print(smap[which.max(smap$rho), ])
+
+smaptheta <- best_smap_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_morn_chl_tau4 <- best_simplex_E_row$rho 
+
+#SIMPLEX VALUES
+simplex_morn_chl_tau4 <- simplex
+
+#MAX SMAP
+max_smap_morn_chl_tau4 <- best_smap_theta_row$rho 
+
+#SMAP VALUES
+smap_morn_chl_tau4 <- smap
+
+
+```
+
+
+
+```{r}
+
+
+#DAILY
+
+
+#MAX SIMPLEX
+max_simplex_daily_phy_tau7 
+
+#SIMPLEX VALUES
+simplex_daily_phy_tau7
+
+#MAX SMAP
+max_smap_daily_phy_tau7
+#SMAP VALUES
+smap_daily_daily_phy_tau7 
+
+
+
+#MAX SIMPLEX
+max_simplex_daily_chl_tau7 
+#SIMPLEX VALUES
+simplex_daily_chl_tau7 
+#MAX SMAP
+max_smap_daily_chl_tau7
+#SMAP VALUES
+smap_daily_daily_chl_tau7
+
+
+
+#MORN
+
+
+
+#MAX SIMPLEX
+max_simplex_morn_chl_tau7  
+
+#SIMPLEX VALUES
+simplex_morn_chl_tau7
+
+#MAX SMAP
+max_smap_morn_chl_tau7
+
+#SMAP VALUES
+smap_daily_morn_chl_tau7
+
+
+
+#MAX SIMPLEX
+max_simplex_morn_phy_tau7 
+
+#SIMPLEX VALUES
+simplex_morn_phy_tau7 
+
+#MAX SMAP
+max_smap_morn_phy_tau7 
+#SMAP VALUES
+smap_daily_morn_chl_tau7 
+
+
+
+```
+
+# PLOT SIMPLEX V. AR1 7 DAYS
+```{r}
+
+# First, collect all your Theta vectors so we can set a common x‐range
+all_theta <- c(
+  simplex_daily_phy_tau7$E,
+  simplex_daily_chl_tau4$E,
+  simplex_morn_phy_tau7$E,
+  simplex_morn_chl_tau4$E
+)
+x_lim <- range(all_theta)
+
+# Then collect all your ρ values to set a common y‐range
+all_rho <- c(
+  simplex_daily_phy_tau7$rho,
+  simplex_daily_chl_tau4$rho,
+  simplex_morn_phy_tau7$rho,
+  simplex_morn_chl_tau4$rho,
+  max_ar1_daily_phy_tau7,
+  max_ar1_daily_chl_tau4,
+  max_ar1_morn_phy_tau7,
+  max_ar1_morn_chl_tau4
+)
+
+y_lim <- range(all_rho)
+y_padding <- 0.05 * diff(y_lim)
+
+
+
+# Plot the first simplex curve
+plot(
+  x     = simplex_daily_phy_tau7$E,
+  y     = simplex_daily_phy_tau7$rho,
+  type  = "l", 
+  col   = "darkorange3",
+  lwd   = 2,
+  xlab  = expression(E~"(Embedding Dimension)"),
+  ylab  = expression("Simplex Prediction Skill ("*rho*")"),
+  main  = "Daily & 9 AM - 12 PM Simplex for Chlorophyll (RFU) at 4 Days & Phycocanin (RFU) at 7 Days",
+  xlim  = c(1.5, 18) , 
+  ylim  = c(y_lim[1] - y_padding, y_lim[2] + y_padding)
+)
+
+
+
+abline(h = max_ar1_daily_phy_tau7,   col = "darkorange3",  lty = 2, lwd = 2)
+
+lines(x = simplex_morn_phy_tau7$E,
+      y = simplex_morn_phy_tau7$rho,
+      col = "orange", lwd = 2)
+
+abline(h = max_ar1_morn_phy_tau7,    col = "orange", lty = 2, lwd = 2)
+
+lines(x = simplex_daily_chl_tau4$E,
+      y = simplex_daily_chl_tau4$rho,
+      col = "darkgreen", lwd = 2)
+
+abline(h = max_ar1_daily_chl_tau4,   col = "darkgreen",  lty = 2, lwd = 2)
+
+
+lines(x = simplex_morn_chl_tau4$E,
+      y = simplex_morn_chl_tau4$rho,
+      col = "lightgreen", lwd = 2)
+
+abline(h = max_ar1_morn_chl_tau4,    col = "lightgreen", lty = 2, lwd = 2)
+
+
+
+
+legend(
+  "topright",
+  legend = c(
+    "7 Days Daily Phycocyanin (RFU) Simplex", 
+        "7 Days Daily Phycocyanin (RFU) AR1",
+   "7 Days 9 AM - 12 PM Phycocyanin (RFU) Simplex", 
+       "7 Days 9 AM - 12 PM Phycocyanin (RFU) AR1",
+    "4 Days Daily Chlorophyll (RFU) Simplex",
+    "4 Days Daily Chlorophyll (RFU) AR1",
+    "4 Days 9 AM - 12 PM Chlorophyll (RFU) Simplex",
+    "4 Days 9 AM - 12 PM Chlorophyll (RFU) AR1"
+  ),
+  col  = c("darkorange3",  "darkorange3",
+            "orange",    "orange",
+           "darkgreen",  "darkgreen",
+           "lightgreen", "lightgreen"),
+   lty  = c(1, 2, 1, 2, 1, 2, 1, 2),
+   lwd  = c(2, 2, 2, 2, 2, 2, 2, 2),
+  pt.cex = 1
+)
+
+
+
+
+```
+
+
+
+# PLOT SMAP V. AR1 7 DAYS
+```{r}
+
+# First, collect all your Theta vectors so we can set a common x‐range
+all_theta <- c(
+  smap_daily_phy_tau7$Theta,
+  smap_daily_chl_tau4$Theta,
+  smap_morn_phy_tau7$Theta,
+  smap_morn_chl_tau4$Theta
+)
+x_lim <- range(all_theta)
+
+# Then collect all your ρ values to set a common y‐range
+all_rho <- c(
+  smap_daily_phy_tau7$rho,
+  smap_daily_chl_tau4$rho,
+  smap_morn_phy_tau7$rho,
+  smap_morn_chl_tau4$rho,
+  max_ar1_daily_phy_tau7,
+  max_ar1_daily_chl_tau4,
+  max_ar1_morn_phy_tau7,
+  max_ar1_morn_chl_tau4
+)
+
+y_lim <- range(all_rho)
+y_padding <- 0.05 * diff(y_lim)
+
+
+
+# Plot the first smap curve
+plot(
+  x     = smap_daily_phy_tau7$Theta,
+  y     = smap_daily_phy_tau7$rho,
+  type  = "l", 
+  col   = "darkorange3",
+  lwd   = 2,
+  xlab  = expression(Theta~"(Localization Parameter)"),
+  ylab  = expression("smap Prediction Skill ("*rho*")"),
+  main  =  "Daily & 9 AM - 12 PM S-map for Chlorophyll (RFU) at 4 Days & Phycocanin (RFU) at 7 Days",
+  xlim  = c(0, 18) , 
+  ylim  = c(y_lim[1] - y_padding, y_lim[2] + y_padding)
+)
+
+
+abline(h = max_ar1_daily_phy_tau7,   col = "darkorange3",  lty = 2, lwd = 2)
+
+lines(x = smap_morn_phy_tau7$Theta,
+      y = smap_morn_phy_tau7$rho,
+      col = "orange", lwd = 2)
+
+abline(h = max_ar1_morn_phy_tau7,    col = "orange", lty = 2, lwd = 2)
+
+lines(x = smap_daily_chl_tau4$Theta,
+      y = smap_daily_chl_tau4$rho,
+      col = "darkgreen", lwd = 2)
+
+abline(h = max_ar1_daily_chl_tau4,   col = "darkgreen",  lty = 2, lwd = 2)
+
+
+lines(x = smap_morn_chl_tau4$Theta,
+      y = smap_morn_chl_tau4$rho,
+      col = "lightgreen", lwd = 2)
+
+abline(h = max_ar1_morn_chl_tau4,    col = "lightgreen", lty = 2, lwd = 2)
+
+
+
+
+legend(
+  "topright",
+  legend = c(
+    "7 Days Daily Phycocyanin (RFU) S-Map", 
+        "7 Days Daily Phycocyanin (RFU) AR1",
+   "7 Days 9 AM - 12 PM Phycocyanin (RFU) S-Map", 
+       "7 Days 9 AM - 12 PM Phycocyanin (RFU) AR1",
+    "4 Days Daily Chlorophyll (RFU) S-Map",
+    "4 Days Daily Chlorophyll (RFU) AR1",
+    "4 Days 9 AM - 12 PM Chlorophyll (RFU) S-Map",
+    "4 Days 9 AM - 12 PM Chlorophyll (RFU) AR1"
+  ),
+  col  = c("darkorange3",  "darkorange3",
+            "orange",    "orange",
+           "darkgreen",  "darkgreen",
+           "lightgreen", "lightgreen"),
+   lty  = c(1, 2, 1, 2, 1, 2, 1, 2),
+   lwd  = c(2, 2, 2, 2, 2, 2, 2, 2),
+  pt.cex = 1
+)
+
+
+
+
+```
+
+
+# UNIVAR HIST CHL DAILY 4 DAYS
+
+## AR1
+
+```{r}
+
+AR1 <- SMap(dataFrame = ag_df_CR, columns = "chl", target = "chl",
+lib = lib_ins, pred = lib_oos, E=1,theta=0,tau=-tau_i,Tp=tau_i) #lib train, #pred is pred 
+
+rho_AR1 <- ComputeError(AR1$predictions$Observations,
+                        AR1$predictions$Predictions)
+
+
+
+rho_AR1_max <- print(rho_AR1$rho)
+rho_AR1_max <- rho_AR1$rho
+
+
+
+```
+
+### Simplex
+
+```{r}
+
+
+#SELECT PARAMS - CHL DAILY
+
+df <- ag_df_CR
+
+independet_var <- "chl"
+
+tau_i <- 4
+
+maxE_i <- 20
+
+
+  #DYNAMIC PARAMS
+
+columns_i <- independet_var
+target_i <- independet_var
+
+
+first_row_2023 <- which(format(df$date, "%Y") == "2023")[1]
+lib_ins <- c(1, first_row_2023 - 1)
+lib_oos <- c(first_row_2023, nrow(df))
+
+ exclusionRadius_i <- ifelse(tau_i == 1, 1, tau_i - 1)
+
+ 
+
+#SIMPLEX 
+
+simplex <- EmbedDimension(dataFrame = df, 
+                          columns = columns_i, 
+                          target = target_i,
+                           tau=-tau_i,
+                          Tp=tau_i,
+                          maxE = maxE_i, exclusionRadius = exclusionRadius_i, 
+lib = lib_ins, 
+pred = lib_oos, 
+showPlot = TRUE) #lib train, #pred is pred 
+
+
+best_simplex_E_row <- simplex[which.max(simplex$rho), ]
+simplexE <- best_simplex_E_row$E
+
+
+#SMAP 
+
+
+################### E = 3
+
+theta_i <- "0.01 0.1 0.3 0.5 0.75 1 1.5 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20" 
+# 21 22 23 24 25"
+
+smap <- PredictNonlinear(dataFrame = df, columns = columns_i, target = columns_i,
+ E= 3 , 
+ 
+ theta = theta_i , 
+                                    tau=-tau_i,Tp=tau_i,exclusionRadius = exclusionRadius_i,
+                                    lib = lib_ins, pred = lib_oos, showPlot = TRUE) 
+
+
+best_smap_theta_row <- print(smap[which.max(smap$rho), ])
+
+smaptheta <- best_smap_theta_row$Theta
+
+
+#MAX SIMPLEX
+max_simplex_daily_chl_tau4 <- best_simplex_E_row$rho 
+
+#SIMPLEX VALUES
+simplex_daily_chl_tau4 <- simplex
+
+#MAX SMAP
+max_smap_daily_chl_tau4 <- best_smap_theta_row$rho 
+
+#SMAP VALUES
+smap_daily_chl_tau4 <- smap
+
+
+```
+
+##ARIMA
+
+```{r}
+library(forecast)
+library(padr)
+library(ggplot2)
+library(tidyverse)
+
+
+ag_df_CR$date <- as.Date(ag_df_CR$date)
+
+
+ag_df_CR <- ag_df_CR  %>% pad()
+ag_df_CR$phy <- as.numeric(ag_df_CR$phy)
+
+
+#Fit Dataset
+rate <- ts(ag_df_CR[,'phy'],start = c(2015,5), frequency = 365 )
+#Tell the gaps and days 
+
+
+
+#Grab Data
+autoplot(rate) + ggtitle ("ARIMA - Daily Aggregate ") + ylab("Phycocanin (RFU)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+
+#Build ARIMA Model - include seasonal autoregressive and seasonal autoregressive moving averages.
+fit_ARIMA_ag_phy <-auto.arima(rate, seasonal = TRUE)
+print(summary(fit_ARIMA_ag_phy))
+checkresiduals(fit_ARIMA_ag_phy)
+
+
+#Forecast
+fcast <- forecast(fit_ARIMA_ag_phy, h =365) #h = amount of periods ahead
+autoplot
+plot(fcast)
+print(summary(fcast))
+
+
+#Wrangle
+
+ARIMA_ag_df_phy_pred <- data.frame(fcast$mean)
+print(ARIMA_ag_df_phy_pred)
+
+
+colnames(ARIMA_ag_df_phy_pred) <- "forecast_phy"
+
+# Create date sequence starting from the 172nd day of 2023
+start_date <- as.Date("2023-01-01") + 171  # 172nd day = 171 days after Jan 1
+num_days <- nrow(ARIMA_ag_df_phy_pred)
+
+ARIMA_ag_df_phy_pred$date <- seq(from = start_date, by = "day", length.out = num_days)
+
+# Print result
+print(ARIMA_ag_df_phy_pred)
+
+all_ARIMA_ag_df_phy_pred <- left_join(ag_df_CR, ARIMA_ag_df_phy_pred, by = "date")
+
+all_ARIMA_ag_df_phy_pred <- na.omit(all_ARIMA_ag_df_phy_pred)
+
+ARIMA_ag_df_phy_pred_results <- ComputeError(all_ARIMA_ag_df_phy_pred$phy, all_ARIMA_ag_df_phy_pred$forecast_phy )
+
+ARIMA_ag_df_phy_pred_results$rho #ARIMA RESULTS 2023
+
+rho_ARIMA_max <- ARIMA_ag_df_phy_pred_results$rho
+
+ag_df_CR <- na.omit(ag_df_CR)
+
+```
+
+
+## Smap
+
+```{r}
+
+library(tibble)
+library(ggplot2)
+
+#Library
+
+
+#AR1
+rho_univar_max <- max_smap_daily_chl_tau4
+  
+Univar_rho_df <- data_frame(
+
+rho_AR1_max,
+rho_univar_max,
+rho_ARIMA_max,
+
+)
+
+
+univar_rho <- tibble(
+  name = c("Linear Regression (AR1)", "S-map", "ARIMA"),
+  value = c(rho_AR1_max, rho_univar_max, rho_ARIMA_max)
+)
+
+# Make a bar plot
+
+ggplot(univar_rho, aes(x = name, y = value, fill = name)) +
+  geom_col() +
+  scale_fill_manual(values = colorRampPalette(c("darkgreen", "lightgreen"))(length(unique(univar_rho$name)))) +
+  theme_minimal() +
+  labs(x = "Model", y = "Prediction Skill (p)", title = "Univariate Model Comparison - Daily Chlorophyll (RFU)") +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"  # Remove the legend
+  )
+
+
+```
+
+#CCM 
+
+
+
+## Load Data 
+
+
+
+```{r}
+
+#DAILY
+
+# CONFIG: Define object name and paths
+quoted_file_name <- "ag_df_CR"
+rds_name <- paste0(quoted_file_name, ".rds")
+
+local_path <- file.path(
+  "C:/Users/mfman/OneDrive/Desktop/HAB2/HAB2/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling",
+  rds_name
+)
+
+github_url <- paste0(
+  "https://raw.githubusercontent.com/mfmanberg/HAB2/main/1_LIB/1_0_data_wrangling/1_0_2_data/1_0_2_2_data_wrangling/",
+  rds_name
+)
+
+
+# Load from GitHub or local, if not save
+if (!file.exists(local_path)) {
+  tryCatch({
+    con <- url(github_url)
+    obj <- readRDS(con)
+    close(con)  # Close the connection
+    assign(quoted_file_name, obj)
+    saveRDS(obj, local_path)
+    message("Loaded from GitHub and saved locally.")
+  }, error = function(e) {
+    if (exists(quoted_file_name)) {
+      saveRDS(get(quoted_file_name), local_path)
+      message("GitHub failed. Saved in-memory object to local path.")
+    } else {
+      stop(paste0("Failed to load ", quoted_file_name, " from GitHub and no in-memory object exists to save."))
+    }
+  })
+} else {
+  assign(quoted_file_name, readRDS(local_path))
+  message("Loaded from local path.")
+}
+
+# Clean up
+rm(rds_name, quoted_file_name, local_path, github_url)
+
+
+```
+
+
+```{r}
+
+library(rEDM, tidyverse)
+
+tau_i <- 4
+
+E_i <- 3
+
+
+critical.r <- function( n, alpha = .05 ) {
+   df <- n - 2
+  critical.t <- qt(alpha/2, df, lower.tail = F)
+  critical.r <- sqrt( (critical.t^2) / ( (critical.t^2) + df ) )
+   return(critical.r)
+}
+
+ exclusionRadius_i <- ifelse(tau_i == 1, 1, tau_i - 1)
+ 
+ independet_var <- "chl"
+target_i <- independet_var
+
+
+#ph
+
+cmap.ph.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau = tau_i, Tp = 0, 
+                   columns = "ph"
+                   ,target = target_i, libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1200 1300 1339", sample = 100, 
+                  exclusionRadius = exclusionRadius_i , 
+                   random = TRUE, showPlot = TRUE) 
+
+#CELSIUS
+
+cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau = tau_i, Tp = 0, columns = "Celsius",target = target_i, libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, 
+                        #exclusionRadius = tau_ccm, 
+                        random = TRUE, showPlot = TRUE) 
+
+
+#Celsius 
+cmap.Celsius.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau = tau_i, Tp = 0, columns = "Celsius",target = target_i, libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100,
+                        #exclusionRadius = tau_ccm,
+                        random = TRUE, showPlot = TRUE) 
+
+
+
+#spcond
+
+cmap.spcond.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau = tau_i, Tp = 0, columns = "spcond",target = target_i, libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, 
+                    #   exclusionRadius = tau_ccm, 
+                       random = TRUE, showPlot = TRUE) 
+
+
+
+#do 
+cmap.do.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau = tau_i, Tp = 0, columns = "do",target = target_i, libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", 
+                   sample = 100,
+                 #  exclusionRadius = tau_ccm, 
+                   random = TRUE, showPlot = TRUE) 
+
+#TURB
+
+cmap.turb.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau = tau_i, Tp = 0, columns = "turb",target = target_i, libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, 
+                    exclusionRadius = exclusionRadius_i , 
+                     random = TRUE, showPlot = TRUE) 
+
+
+#SALINITY
+
+cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau = tau_i, Tp = 0, columns = "Salinity",target = target_i, libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100,
+                    exclusionRadius = exclusionRadius_i , 
+                         random = TRUE, showPlot = TRUE) 
+
+cmap.Salinity.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau = tau_i, Tp = 0, columns = "Salinity",
+                        target = target_i
+                         libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100,
+                    exclusionRadius = exclusionRadius_i , 
+                         random = TRUE, showPlot = TRUE) 
+
+#sin_season
+
+cmap.sin_season.phy <- CCM(dataFrame = ag_df_CR, E = E_i, tau=-7, Tp = 0, columns = "sin_season", 
+                          target = target_i , 
+                           libSizes = "20 40 60 80 100 140 180 240 300 400 500 600 700 800 900 1000 1100 1339", sample = 100, 
+                    exclusionRadius = exclusionRadius_i , 
+                           random = TRUE, showPlot = TRUE) 
+
+
+```
+
+
+#CCM Helper Function - Plot
+
+
+```{r}
+
+
+# Set output file path
+output_path <- "C:\\Users\\mfman\\OneDrive\\Desktop\\HAB2\\HAB2\\3_OUTPUT\\4_3_CCM\\ccm_combined.png"
+
+# Save plot to PNG
+png(filename = output_path, width = 1600, height = 1200, res = 150)
+
+# Plot layout: 3x3 grid
+par(mfrow = c(3, 3), mar = c(4, 4, 3, 2))
+
+# pH
+plot_ccm_result(cmap.ph.phy, "ph", corr_value = pull_corr(ag_df_CR, "ph"), critical_corr = critical.r(1374), 
+                legend_labels = c("ph:Chlorophyll", "Chlorophyll:ph", "Correlation", "Critical Correlation"),
+                legend_colors = c("blue", "red", "green", "darkgreen"),
+                legend_lty = c(1, 1, 2, 2))
+
+# Temperature
+plot_ccm_result(cmap.Celsius.phy, "Temperature (°C)", corr_value = pull_corr(ag_df_CR, "Celsius"), critical_corr = critical.r(1374), 
+                legend_labels = c("Celsius:Chlorophyll", "Chlorophyll:Celsius", "Correlation", "Critical Correlation"),
+                legend_colors = c("blue", "red", "green", "darkgreen"),
+                legend_lty = c(1, 1, 2, 2))
+
+# Specific Conductivity
+plot_ccm_result(cmap.spcond.phy, "Specific Conductivity (mS/cm)", 
+                corr_value = pull_corr(ag_df_CR, "spcond"), 
+                critical_corr = critical.r(1374),
+                legend_labels = c("Specific Conductivity:Chlorophyll", "Chlorophyll:Specific Conductivity", "Correlation", "Critical Correlation"),
+                legend_colors = c("blue", "red", "green", "darkgreen"),
+                legend_lty = c(1, 1, 2, 2))
+
+# Dissolved Oxygen
+plot_ccm_result(cmap.do.phy, "Dissolved Oxygen (mg/L)", 
+                corr_value = pull_corr(ag_df_CR, "do"), 
+                critical_corr = critical.r(1374),
+                legend_x = bottomright
+                legend_labels = c("Dissolved Oxygen:Chlorophyll", "Chlorophyll:Dissolved Oxygen", "Correlation", "Critical Correlation"),
+                legend_colors = c("blue", "red", "green", "darkgreen"),
+                legend_lty = c(1, 1, 2, 2))
+
+# Turbidity
+plot_ccm_result(cmap.turb.phy, "Turbidity (FNU)", 
+                corr_value = pull_corr(ag_df_CR, "turb"), 
+                critical_corr = critical.r(1374),
+                legend_labels = c("Turbidity:Chlorophyll", "Chlorophyll:Turbidity", "Correlation", "Critical Correlation"),
+                legend_colors = c("blue", "red", "green", "darkgreen"),
+                legend_lty = c(1, 1, 2, 2))
+
+# Salinity
+plot_ccm_result(cmap.Salinity.phy, "Practical Salinity (S/m)", 
+                corr_value = pull_corr(ag_df_CR, "Salinity"),
+                critical_corr = critical.r(1374),
+                legend_labels = c("Salinity:Chlorophyll", "Chlorophyll:Salinity", "Correlation", "Critical Correlation"),
+                legend_colors = c("blue", "red", "green", "darkgreen"),
+                legend_lty = c(1, 1, 2, 2))
+
+# Seasonality
+plot_ccm_result(cmap.sin_season.phy, "Seasonality (Days)", 
+                corr_value = pull_corr(ag_df_CR, "sin_season"), 
+                critical_corr = critical.r(1374),
+                legend_labels = c("Seasonality:Chlorophyll", "Chlorophyll:Seasonality", "Correlation", "Critical Correlation"),
+                legend_colors = c("blue", "red", "green", "darkgreen"),
+                legend_lty = c(1, 1, 2, 2))
+
+# Finish saving
+dev.off()
+
+
+
+
+```
+
+
+
+#Surrogate Table
+
+
+
+
+
+
+<!-- #Multivariate -->
+
+<!-- # Multivariate CHL DAILY -->
+
+<!-- #### Data Config  -->
+
+<!-- ```{r} -->
+
+<!-- library(rEDM) -->
+
+
+<!-- df <- ag_df_CR -->
+
+<!-- independet_var <- "phy" -->
+
+<!-- tau_i <- 4 -->
+
+<!-- maxE_i <- 20 -->
+
+<!-- target_i <- independet_var -->
+
+<!-- columns_i <- c( "chl" ,     "phy"   ,   "ph"   ,    "Celsius" , "spcond" ,  "do" ,      "turb"  ,   "Salinity" , "sin_season") -->
+
+
+
+
+
+
+<!-- ``` -->
+
+
+<!-- #### Simplex - Find Optimal E  -->
+
+<!-- ```{r} -->
+
+
+<!-- #SIMPLEX  -->
+
+<!-- simplex <- EmbedDimension(dataFrame = df,  -->
+<!--                           columns = columns_i,  -->
+<!--                           target = target_i, -->
+<!--                            tau=-tau_i, -->
+<!--                           Tp=tau_i, -->
+<!--                           maxE = maxE_i, exclusionRadius = exclusionRadius_i,  -->
+<!-- lib = lib_ins,  -->
+<!-- pred = lib_oos,  -->
+<!-- showPlot = TRUE) #lib train, #pred is pred  -->
+
+
+<!-- best_simplex_E_row <- simplex[which.max(simplex$rho), ] -->
+<!-- simplexE <- best_simplex_E_row$E -->
+
+
+<!-- #SMAP  -->
+
+
+<!-- theta_i <- "0.01 0.1 0.3 0.5 0.75 1 1.5 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25" -->
+
+<!-- smap <- PredictNonlinear(dataFrame = df, columns = columns_i, target = columns_i, -->
+<!--  E= simplexE ,  -->
+
+<!--  theta = theta_i ,  -->
+<!--                                     tau=-tau_i,Tp=tau_i,exclusionRadius = exclusionRadius_i, -->
+<!--                                     lib = lib_ins, pred = lib_oos, showPlot = TRUE)  -->
+
+
+<!-- best_smap_theta_row <- print(smap[which.max(smap$rho), ]) -->
+
+<!-- smaptheta <- best_smap_theta_row$Theta -->
+
+
+<!-- #MAX SIMPLEX -->
+<!-- max_simplex_multivar <- best_simplex_E_row$rho  -->
+
+<!-- #SIMPLEX VALUES -->
+<!-- simplex_mulitvar <- simplex -->
+
+<!-- #MAX SMAP -->
+<!-- max_smap_mulitvar <- best_smap_theta_row$rho  -->
+
+<!-- #SMAP VALUES -->
+<!-- smap_mulitvar  <- smap -->
+
+
+
+<!-- ``` -->
+
+
+
+
+
+
+
+
+
+

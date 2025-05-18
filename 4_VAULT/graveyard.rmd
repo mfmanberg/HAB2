@@ -3920,4 +3920,102 @@ stats_AR <- ComputeError(preds_AR$predictions$Observations,
 
 
 
+```{r}
+
+
+#Surr functions
+
+```{r}
+
+#RUN SIMPLEX 
+
+do_1_xmap <- function(dataFrame, E, tau, Tp, lib=NULL, pred=NULL, columns, target, sample, exclusionRadius, random = FALSE, showPlot = FALSE, ...) {
+
+# do_1_surr_ccm <- function(dataFrame, E, tau, Tp, columns, target, libSizes, sample, exclusionRadius, random = FALSE, showPlot = FALSE) {
+
+    if(is.null(lib)){
+    lib <- paste("1",nrow(dataFrame))
+    pred <- lib
+  }
+
+  # Run CCM
+  ccm_result <- Simplex(
+    dataFrame = dataFrame,
+    E = E,
+    lib = lib,
+    pred = pred,
+    tau = tau,
+    Tp = Tp,
+    columns = columns,
+    target = target,
+    exclusionRadius = exclusionRadius,
+    ...
+  )
+
+  # return(ccm_result)
+
+  xmap_stats <- ComputeError(ccm_result$Observations,ccm_result$Predictions)
+
+  # # Extract rho at maximum library size
+  # # max_lib_size <- max(as.numeric(unlist(strsplit(libSizes, " "))))
+  # rho_max <- ccm_result %>%
+  #   # filter(LibrarySize == max_lib_size) %>%
+  #   pull(rho)
+
+  return(xmap_stats)  # return mae, rmse, and rho
+  # return(xmap_stats$rho)  # or return just rho
+}
+
+make_yday_surrogate <- function(yday,ts,bw=28,num_surr=1){
+  
+  # ksmooth(df_ph$yday,df_ph$ph,bandwidth=28,x.points=120:320,kernel="normal") 
+  
+  if (any(!is.finite(ts))) {
+    stop("SurrogateData(): input time series contained invalid values")
+  }
+  n = length(ts)
+  
+  seasonal_cyc = map_dbl(yday,\(yday_i) ksmooth(yday,ts,bandwidth=bw,x.points=yday_i)$y)
+  seasonal_resid = ts - seasonal_cyc
+  
+  # randomize the temporal sequence of residuals and add them back to the cycle.
+  
+  return(sapply(1:num_surr, function(i) {
+    seasonal_cyc + sample(seasonal_resid, n)
+  }))
+  
+  
+}
+
+
+do_1_surr_xmap <- function(dataFrame, E, tau, Tp=0, columns, target, lib=NULL, pred=NULL, exclusionRadius, yday_col = "yday") {
+
+  if(is.null(lib)){
+    lib <- paste("1",nrow(dataFrame))
+    pred <- lib
+  }
+  # Make a temporary data frame with a surrogate of `target`
+
+  dataFrame_i <- dataFrame
+  dataFrame_i[,target] <- make_yday_surrogate(dataFrame[,yday_col],dataFrame[,target])
+
+  xmap_stats <- do_1_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target,
+                        lib=lib, pred=pred, exclusionRadius=exclusionRadius)
+
+  # xmap_stats <- do_1_surr_xmap(dataFrame_i, E=E, tau=tau, Tp=Tp, columns=columns, target=target,
+  #                       lib=lib, pred=pred, exclusionRadius=exclusionRadius, yday_col = "yday")   #function
+
+  return(xmap_stats)
+}
+
+
+```
+
+
+
+
+
+
+
+```
 
